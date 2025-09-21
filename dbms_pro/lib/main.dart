@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:budget_buddy/pages/home_page.dart';// Import your HomePage UI file here
+import 'home_page.dart';
 
 void main() {
   runApp(const BudgetBuddyApp());
