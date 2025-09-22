@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:dbms_pro/auth/signin_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import '../home_page.dart';
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -21,16 +23,41 @@ class _SignUpPageState extends State<SignUpPage> {
     
     setState(() => _isLoading = true);
     
-    try {
+try {
+  final UserCredential userCredential =
       await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      Navigator.pushReplacementNamed(context, '/home');
-    } catch (e) {
+    email: _emailController.text.trim(),
+    password: _passwordController.text.trim(),
+  );
+
+  // Store additional user info in Firestore
+  await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userCredential.user!.uid)
+      .set({
+    'email': _emailController.text.trim(),
+    'name': '', // Add name field in UI if needed
+    'profile_picture': '', // Add profile picture feature
+  });
+
+  // ✅ Navigate to HomePage
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => HomePage()),
+  );
+}on FirebaseAuthException catch (e) {
+      String errorMessage = 'An unknown error occurred. Please try again later.';
+      if (e.code == 'email-already-in-use') {
+        errorMessage = 'This email is already in use. Please try a different one.';
+      } else if (e.code == 'weak-password') {
+        errorMessage = 'Password is too weak. Please choose a stronger password.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Error: $e"),
+          content: Text(errorMessage),
           backgroundColor: Colors.red[600],
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -39,6 +66,56 @@ class _SignUpPageState extends State<SignUpPage> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isPassword,
+    required bool enabled,
+    required FormFieldValidator<String> validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPassword && _obscurePassword,
+        enabled: enabled,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.grey[600]),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: Colors.grey[600],
+                  ),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
   }
 
   @override
@@ -57,7 +134,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 children: [
                   const SizedBox(height: 60),
                   
-                  // Welcome Text
                   Text(
                     'Create Account',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -77,91 +153,49 @@ class _SignUpPageState extends State<SignUpPage> {
                   const SizedBox(height: 48),
 
                   // Email Field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[600]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email',
+                    icon: Icons.email_outlined,
+                    isPassword: false,
+                    enabled: !_isLoading,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
 
                   // Password Field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        if (value.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                            color: Colors.grey[600],
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Password',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
+                    enabled: !_isLoading,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                        return 'Password must contain at least one uppercase letter';
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(value)) {
+                        return 'Password must contain at least one number';
+                      }
+                      if (!RegExp(r'[@$!%*?&]').hasMatch(value)) {
+                        return 'Password must contain at least one special character';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 32),
 
@@ -223,7 +257,10 @@ class _SignUpPageState extends State<SignUpPage> {
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                       TextButton(
-                        onPressed: () => Navigator.pushReplacementNamed(context, '/signin'),
+                        onPressed: () =>   Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => SignInPage()),
+                            ),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -235,6 +272,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             color: Color(0xFF667eea),
                             fontWeight: FontWeight.w600,
                           ),
+                          
                         ),
                       ),
                     ],
