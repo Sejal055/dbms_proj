@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../home_page.dart';
+// import 'expense.dart'; // Added this import to access ExpenseForm
+// TODO: Update the import below to the correct path if 'expense.dart' exists elsewhere in your project.
+import '../expense.dart'; // Adjust the path as needed based on your project structure
+
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
 
@@ -51,11 +55,11 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
         password: _passwordController.text.trim(),
       );
 
-      // Sign-in successful, navigate to Home
+      // Sign-in successful, navigate to the ExpenseForm
       if (mounted) {
          Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => HomePage()),
+                              MaterialPageRoute(builder: (context) => ExpenseForm()), // Changed HomePage() to ExpenseForm()
                             );
       }
     } on FirebaseAuthException catch (e) {
@@ -92,6 +96,14 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -271,7 +283,6 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon),
-            suffixIcon: suffixIcon,
             border: OutlineInputBorder(),
           ),
         ),
@@ -279,11 +290,4 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 }
