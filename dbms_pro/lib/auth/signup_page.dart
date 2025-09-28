@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../welcome_details.dart'; // Update path as needed
 import 'login_page.dart'; // Import your login page here
 
-
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -31,10 +30,18 @@ class _SignUpPageState extends State<SignUpPage> {
         password: _passwordController.text.trim(),
       );
 
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+      final userDocRef = FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
+
+      // Create user document
+      await userDocRef.set({
         'email': _emailController.text.trim(),
         'name': '',
         'profile_picture': '',
+      });
+
+      // Initialize an empty expenses subcollection with a placeholder document
+      await userDocRef.collection('expenses').doc('init').set({
+        'initialized': true,
       });
 
       if (mounted) {

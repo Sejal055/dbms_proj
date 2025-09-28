@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../welcome_details.dart'; // Adjust as needed
-import '../home_page.dart'; // Adjust as needed
+import 'signup_page.dart'; // Import your sign up page
+import '../home_page.dart'; // Import for home navigation if needed
 
 class LogInPage extends StatefulWidget {
   const LogInPage({super.key});
@@ -30,9 +30,8 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
+    _fadeAnimation =
+        Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
     _animationController.forward();
   }
 
@@ -42,7 +41,7 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
     setState(() => _isLoading = true);
 
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -50,7 +49,7 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => WelcomeDetailsPage()),
+          MaterialPageRoute(builder: (context) => HomePage()),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -76,8 +75,7 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -128,6 +126,7 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -139,160 +138,142 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFB3BFFA), Color(0xFFD8CFFD)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(18),
-                      child:
-                          const Icon(Icons.login_rounded, size: 40, color: Colors.white),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Welcome Back',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Sign in to continue to your account',
-                      style: TextStyle(fontSize: 15, color: Colors.black54),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    _buildInputField(
-                      controller: _emailController,
-                      label: 'Email Address',
-                      hint: 'Enter your email',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!RegExp(
-                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                            .hasMatch(value)) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    _buildInputField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      hint: 'Enter your password',
-                      icon: Icons.lock_outline,
-                      obscureText: _obscurePassword,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+            child: SizedBox(
+              height: size.height,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
                       children: [
-                        Transform.scale(
-                          scale: 0.9,
-                          child: Checkbox(
-                            value: _rememberMe,
-                            onChanged: (value) =>
-                                setState(() => _rememberMe = value!),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('Remember me'),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            // TODO: Forgot password logic here
-                          },
-                          child: const Text('Forgot Password?'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _signIn,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(11)),
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: Ink(
+                        const SizedBox(height: 60),
+                        Container(
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF7BAFFC), Color(0xFFD6A8F8)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
+                              colors: [Color(0xFFB3BFFA), Color(0xFFD8CFFD)],
                             ),
-                            borderRadius: BorderRadius.circular(11),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Center(
-                            child: _isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white)
-                                : const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
-                                  ),
+                          child: const Icon(Icons.login_rounded, color: Colors.white, size: 36),
+                        ),
+                        const SizedBox(height: 32),
+                        const Text(
+                          'Welcome Back',
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Sign in to continue to your account',
+                          style: TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.w400),
+                        ),
+                        const SizedBox(height: 48),
+                        _buildInputField(
+                            controller: _emailController,
+                            label: 'Email Address',
+                            hint: 'Enter your email',
+                            icon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                return 'Please enter a valid email';
+                              }
+                              return null;
+                            }),
+                        const SizedBox(height: 20),
+                        _buildInputField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            hint: 'Enter your password',
+                            icon: Icons.lock_outline,
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your password';
+                              }
+                              return null;
+                            }),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Transform.scale(
+                              scale: 0.9,
+                              child: Checkbox(
+                                value: _rememberMe,
+                                onChanged: (value) => setState(() => _rememberMe = value!),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Remember me'),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () {
+                                // TODO: Forgot password logic here
+                              },
+                              child: const Text('Forgot Password?'),
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: 30),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _signIn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: Ink(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF7BAFFC), Color(0xFFD6A8FF)],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: Center(
+                                child: _isLoading
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : const Text('Sign In', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Don't have an account? "),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushReplacementNamed(context, '/signup');
-                          },
-                          child: const Text(
-                            'Sign Up',
-                            style: TextStyle(
-                                color: Color(0xFF7BAFFC),
-                                fontWeight: FontWeight.bold),
-                          ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("Don't have an account? "),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => SignUpPage()),
+                                );
+                              },
+                              child: const Text('Sign Up',
+                                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7BAFFC))),
+                            )
+                          ],
                         ),
+                        const SizedBox(height: 32),
                       ],
                     ),
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ),
               ),
             ),
