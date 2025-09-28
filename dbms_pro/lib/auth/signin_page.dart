@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../home_page.dart';
-// import 'expense.dart'; // Added this import to access ExpenseForm
-// TODO: Update the import below to the correct path if 'expense.dart' exists elsewhere in your project.
-import '../expense.dart'; // Adjust the path as needed based on your project structure
+import '../expense.dart';
+import '../welcome_details.dart'; // Update to your actual path
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -55,12 +54,12 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
         password: _passwordController.text.trim(),
       );
 
-      // Sign-in successful, navigate to the ExpenseForm
+      // Navigate to BudgetBuddyPage after successful sign-in
       if (mounted) {
-         Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => ExpenseForm()), // Changed HomePage() to ExpenseForm()
-                            );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => BudgetBuddyPage()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       String message = '';
@@ -242,9 +241,8 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                         children: [
                           const Text("Don't have an account? "),
                           TextButton(
-                            onPressed: () =>
-                                Navigator.pushReplacementNamed(
-                                    context, '/signup'),
+                            onPressed: () => Navigator.pushReplacementNamed(
+                                context, '/signup'),
                             child: const Text('Sign Up'),
                           ),
                         ],
@@ -284,10 +282,10 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
             hintText: hint,
             prefixIcon: Icon(icon),
             border: OutlineInputBorder(),
+            suffixIcon: suffixIcon,
           ),
         ),
       ],
     );
   }
-
 }
