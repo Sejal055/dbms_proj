@@ -179,10 +179,6 @@ class _AddExpensePageState extends State<AddExpensePage> {
                   backgroundColor: Colors.lightBlueAccent,
                   
                 ),
-                // RoundedRectangleBorder(
-                // borderRadius: BorderRadius.circular(10), // Rounded corners
-                //   ),
-                
                 child: Text(
                   'Save Expense', 
                   style: TextStyle(

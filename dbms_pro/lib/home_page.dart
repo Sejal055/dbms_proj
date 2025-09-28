@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'add_expense_page.dart';
+import 'categories.dart';
 import 'history.dart';
 import 'models/expense.dart';
 
@@ -337,6 +338,28 @@ void _onItemTapped(int index) {
                 ),
 
                 SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CategoriesPage(expenses: _expenses),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'View All Categories',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                ),
+
           
                 // Payment Section
                 Text(
@@ -549,6 +572,8 @@ class CategoryItem extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+          // Inside the Column after the horizontal category list
+          SizedBox(height: 12),
         ],
       ),
     );

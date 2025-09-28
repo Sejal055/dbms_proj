@@ -56,7 +56,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F0F0),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
