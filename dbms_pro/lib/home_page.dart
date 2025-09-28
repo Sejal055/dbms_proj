@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_expense_page.dart'; // Adjust path accordingly
 
 // Dummy data for demonstration
@@ -32,8 +35,33 @@ final categories = [
   {'title': 'Entertainment', 'icon': Icons.movie, 'color': Color(0xFFF7E6ED)},
 ];
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String userName = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        setState(() {
+          userName = doc.data()?['name'] ?? 'User';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +69,6 @@ class HomePage extends StatelessWidget {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          // Top greeting section
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -62,13 +89,13 @@ class HomePage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Good morning, Alex! 👋',
+                            'Good morning, $userName! 👋',
                             style: TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Ready to track your expenses today?',
                             style: TextStyle(
@@ -79,10 +106,10 @@ class HomePage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 20,
                       backgroundImage: NetworkImage("https://i.pravatar.cc/60"),
-                    ), // Avatar
+                    ),
                   ],
                 ),
                 SizedBox(height: 15),
