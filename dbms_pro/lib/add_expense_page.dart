@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'models/expense.dart';
 
 class AddExpensePage extends StatefulWidget {
@@ -9,7 +10,6 @@ class AddExpensePage extends StatefulWidget {
   @override
   _AddExpensePageState createState() => _AddExpensePageState();
 }
-
 
 class _AddExpensePageState extends State<AddExpensePage> {
   final _formKey = GlobalKey<FormState>();
@@ -33,7 +33,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
     }
   }
 
-  void _saveExpense() {
+  void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
@@ -44,17 +44,24 @@ class _AddExpensePageState extends State<AddExpensePage> {
         date: _selectedDate,
       );
 
+      // Save to a new custom collection "dailyExpenses"
+      await FirebaseFirestore.instance.collection('dailyExpenses').add({
+        'name': expense.name,
+        'category': expense.category,
+        'amount': expense.amount,
+        'date': expense.date,
+      });
+
       widget.onSaveExpense(expense);
       Navigator.pop(context);
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white,title: Text('Add Expense')),
+      appBar: AppBar(backgroundColor: Colors.white, title: Text('Add Expense')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -66,54 +73,40 @@ class _AddExpensePageState extends State<AddExpensePage> {
                   labelText: 'Expense Name',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlueAccent,
-                    )
+                    borderSide: BorderSide(color: Colors.lightBlueAccent),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.blue,
-                    )
+                    borderSide: BorderSide(color: Colors.blue),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlueAccent,
-                    ),
+                    borderSide: BorderSide(color: Colors.lightBlueAccent),
                   ),
                 ),
                 onSaved: (value) => _name = value!,
                 validator: (value) =>
                     value!.isEmpty ? 'Please enter a name' : null,
               ),
-              SizedBox(height: 20,),
+              SizedBox(height: 20),
               DropdownButtonFormField(
                 decoration: InputDecoration(
                   labelText: 'Category',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlue,
-                    ),
+                    borderSide: BorderSide(color: Colors.lightBlue),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.blue,
-                    ),
+                    borderSide: BorderSide(color: Colors.blue),
                   ),
                   disabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlueAccent,
-                    ),
+                    borderSide: BorderSide(color: Colors.lightBlueAccent),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlueAccent,
-                    ),
+                    borderSide: BorderSide(color: Colors.lightBlueAccent),
                   ),
                 ),
                 value: _category,
@@ -129,34 +122,25 @@ class _AddExpensePageState extends State<AddExpensePage> {
                   });
                 },
               ),
-              SizedBox(height: 20,),
-
+              SizedBox(height: 20),
               TextFormField(
                 decoration: InputDecoration(
                   labelText: 'Amount',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlue,
-                    )
+                    borderSide: BorderSide(color: Colors.lightBlue),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.blue,
-                    ),
+                    borderSide: BorderSide(color: Colors.blue),
                   ),
                   disabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlueAccent,
-                    ),
+                    borderSide: BorderSide(color: Colors.lightBlueAccent),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Colors.lightBlueAccent,
-                    ),
+                    borderSide: BorderSide(color: Colors.lightBlueAccent),
                   ),
                 ),
                 keyboardType: TextInputType.number,
@@ -164,9 +148,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 validator: (value) =>
                     value!.isEmpty ? 'Enter amount' : null,
               ),
-              
-              SizedBox(height: 20,),
-
+              SizedBox(height: 20),
               ListTile(
                 title: Text("Date: ${_selectedDate.toLocal()}".split(' ')[0]),
                 trailing: Icon(Icons.calendar_today),
@@ -177,14 +159,9 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 onPressed: _saveExpense,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.lightBlueAccent,
-                  
                 ),
-                // RoundedRectangleBorder(
-                // borderRadius: BorderRadius.circular(10), // Rounded corners
-                //   ),
-                
                 child: Text(
-                  'Save Expense', 
+                  'Save Expense',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
