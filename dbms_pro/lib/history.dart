@@ -1,326 +1,194 @@
-// import 'package:flutter/material.dart';
-// import 'add_expense_page.dart';
-// import 'models/expense.dart';
-
-
-// class HistoryPage extends StatelessWidget {
-//   final List<Expense> expenses;
-
-//   HistoryPage({required this.expenses});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text('Expense History'),
-//         backgroundColor: Colors.white,
-//         foregroundColor: Colors.black,
-//       ),
-//       backgroundColor: Colors.white,
-//       body: expenses.isEmpty
-//           ? Center(child: Text('No expenses added yet.'))
-//           : ListView.builder(
-//               itemCount: expenses.length,
-//               itemBuilder: (context, index) {
-//                 final expense = expenses[index];
-//                 return Card(
-//                   color: Colors.white,
-//                   shadowColor: const Color.fromARGB(255, 211, 210, 210),
-//                   surfaceTintColor: Colors.lightBlue,
-//                   elevation: 2,
-//                   child: ListTile(
-//                     title: Text(expense.name),
-//                     subtitle: Text(
-//                       '${expense.category} - ${expense.date.toLocal().toString().split(" ")[0]}',
-//                     ),
-//                     trailing: Text('₹${expense.amount.toStringAsFixed(2)}'),
-//                   ),
-//                 );
-//               },
-//             ),
-//     );
-//   }
-// }
-
-// import 'package:flutter/material.dart';
-// import 'models/expense.dart';
-// import 'package:intl/intl.dart';
-
-// class HistoryPage extends StatefulWidget {
-//   final List<Expense> expenses;
-
-//   HistoryPage({required this.expenses});
-
-//   @override
-//   _HistoryPageState createState() => _HistoryPageState();
-// }
-
-// class _HistoryPageState extends State<HistoryPage> {
-//   String _searchQuery = '';
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // Filtered expenses based on search query
-//     List<Expense> filteredExpenses = widget.expenses.where((expense) {
-//       return expense.name.toLowerCase().contains(_searchQuery.toLowerCase());
-//     }).toList();
-
-//     // Calculate total spending for the current month
-//     DateTime now = DateTime.now();
-//     double totalSpending = widget.expenses
-//         .where((expense) =>
-//             expense.date.year == now.year && expense.date.month == now.month)
-//         .fold(0.0, (sum, item) => sum + item.amount);
-
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text('Expense History'),
-//         backgroundColor: Colors.white,
-//         foregroundColor: Colors.black,
-//       ),
-//       backgroundColor: Colors.white,
-//       body: Column(
-//         children: [
-//           // 🔍 Search Bar
-//           Padding(
-//             padding: const EdgeInsets.all(12.0),
-//             child: TextField(
-//               onChanged: (value) {
-//                 setState(() {
-//                   _searchQuery = value;
-//                 });
-//               },
-//               decoration: InputDecoration(
-//                 hintText: 'Search expenses...',
-//                 prefixIcon: Icon(Icons.search),
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(30),
-//                 ),
-//                 filled: true,
-//                 fillColor: Colors.white,
-//               ),
-//             ),
-//           ),
-
-//           // 💰 Total Spending Bar
-//           Padding(
-//             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-//             child: Container(
-//               width: double.infinity,
-//               padding: EdgeInsets.all(16),
-//               decoration: BoxDecoration(
-//                 color: Colors.lightBlue[50],
-//                 borderRadius: BorderRadius.circular(5),
-//               ),
-//               child: Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                 children: [
-//                   Text(
-//                     'Total Spent (${DateFormat('MMMM yyyy').format(now)}):',
-//                     style: TextStyle(
-//                       fontWeight: FontWeight.bold,
-//                       fontSize: 16,
-//                     ),
-//                   ),
-//                   Text(
-//                     '₹${totalSpending.toStringAsFixed(2)}',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       color: Colors.orange,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           ),
-
-//           // 📋 Expenses List
-//           Expanded(
-//             child: filteredExpenses.isEmpty
-//                 ? Center(child: Text('No expenses found.'))
-//                 : ListView.builder(
-//                     itemCount: filteredExpenses.length,
-//                     itemBuilder: (context, index) {
-//                       final expense = filteredExpenses[index];
-//                       return Card(
-//                         color: Colors.white,
-//                         shadowColor:
-//                             const Color.fromARGB(255, 211, 210, 210),
-//                         surfaceTintColor: Colors.lightBlue,
-//                         elevation: 2,
-//                         margin: EdgeInsets.symmetric(
-//                             horizontal: 12, vertical: 6),
-//                         child: ListTile(
-//                           title: Text(expense.name),
-//                           subtitle: Text(
-//                             '${expense.category} - ${expense.date.toLocal().toString().split(" ")[0]}',
-//                           ),
-//                           trailing: Text(
-//                             '₹${expense.amount.toStringAsFixed(2)}',
-//                             style: TextStyle(fontWeight: FontWeight.w600),
-//                           ),
-//                         ),
-//                       );
-//                     },
-//                   ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
-import 'models/expense.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 class HistoryPage extends StatefulWidget {
-  final List<Expense> expenses;
-
-  HistoryPage({required this.expenses});
+  const HistoryPage({Key? key}) : super(key: key);
 
   @override
   _HistoryPageState createState() => _HistoryPageState();
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  String _searchQuery = '';
+  final user = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
-    // Filter based on search query
-    List<Expense> filteredExpenses = widget.expenses.where((expense) {
-      return expense.name.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
-
-    // Group by Month-Year
-    Map<String, List<Expense>> groupedExpenses = {};
-    for (var expense in filteredExpenses) {
-      String month = DateFormat('MMMM yyyy').format(expense.date);
-      if (!groupedExpenses.containsKey(month)) {
-        groupedExpenses[month] = [];
-      }
-      groupedExpenses[month]!.add(expense);
-    }
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('History', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: IconThemeData(color: Colors.black),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFE9E4F5), // light purple
+              Color(0xFFF7F7F7), // near white
+            ],
+            stops: [0.0, 0.4],
+          ),
+        ),
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: _buildTransactionList(),
+            ),
+          ],
+        ),
       ),
-      backgroundColor: Colors.white,
-      body: Column(
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 20,
+        left: 20,
+        right: 20,
+        bottom: 20,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 🔍 Search Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search transactions',
-                prefixIcon: Icon(Icons.arrow_back),
-                filled: true,
-                fillColor: Colors.grey[200],
-                contentPadding: EdgeInsets.symmetric(vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(
+                    'https://i.pravatar.cc/150?img=${DateTime.now().millisecondsSinceEpoch % 70}'),
               ),
-            ),
+              const SizedBox(width: 12),
+              const Text(
+                'Hi, User!',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-
-          // 🔘 Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _buildFilterChip("Date"),
-                _buildFilterChip("Amount"),
-                _buildFilterChip("Category"),
-                _buildFilterChip("Payment Method"),
-              ],
-            ),
-          ),
-
-          SizedBox(height: 10),
-
-          // 📅 Monthly Grouped Transactions
-          Expanded(
-            child: groupedExpenses.isEmpty
-                ? Center(child: Text('No expenses found.'))
-                : ListView(
-                    children: groupedExpenses.entries.map((entry) {
-                      final month = entry.key;
-                      final expenses = entry.value;
-                      double total = expenses.fold(
-                          0.0, (sum, item) => sum + item.amount);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Month Header
-                          Container(
-                            color: Colors.grey[200],
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(month,
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 19,letterSpacing: 2)),
-                                Text("Rs. ${total.toStringAsFixed(0)}",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 20)),
-                              ],
-                            ),
-                          ),
-
-                          // List of expenses
-                          ...expenses.map((expense) => ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.purple[100], // Add your asset
-                                ),
-                                title: Text(expense.name),
-                                subtitle: Text(
-                                    DateFormat('dd MMMM').format(expense.date)),
-                                trailing: Text(
-                                  'Rs. ${expense.amount.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: expense.amount >= 0
-                                        ? Colors.orange
-                                        : Colors.green,
-                                  ),
-                                ),
-                              )),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none, size: 26),
+            onPressed: () {},
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: Chip(
-        backgroundColor: Colors.lightBlue,
-        label: Text(label, style: TextStyle(color: Colors.white)),
-      ),
+  Widget _buildTransactionList() {
+    if (user == null) {
+      return const Center(child: Text("No user found"));
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .collection('expenses')
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text(
+              "No history yet",
+              style: TextStyle(color: Colors.black54, fontSize: 16),
+            ),
+          );
+        }
+
+        final expenses = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          itemCount: expenses.length,
+          itemBuilder: (context, index) {
+            final expense = expenses[index];
+            final name = expense['expense_name'] ?? '';
+            final amount = expense['expense_amount'] ?? 0;
+            final type = expense['expense_type'] ?? 'Expense';
+            final category = expense['category'] ?? '';
+            final timestamp = expense['timestamp'] as Timestamp?;
+            final date = timestamp != null
+                ? DateFormat('dd MMM yyyy, hh:mm a').format(timestamp.toDate())
+                : '';
+
+            bool isDebit = type != 'Income';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: isDebit
+                          ? Colors.pink.shade100
+                          : Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isDebit ? Icons.arrow_upward : Icons.arrow_downward,
+                      color: isDebit ? Colors.pink : Colors.green,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          category,
+                          style: TextStyle(
+                              fontSize: 13, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          date,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    "${isDebit ? '-' : ''}₹$amount",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDebit ? Colors.pink.shade400 : Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
