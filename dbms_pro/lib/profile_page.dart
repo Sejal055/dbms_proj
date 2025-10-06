@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'auth/login_page.dart'; // ✅ Make sure you have this page in your project
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -37,8 +38,8 @@ class _ProfilePageState extends State<ProfilePage> {
         setState(() {
           userName = data['name'] ?? '';
           userEmail = data['email'] ?? '';
-          monthlyBudget = (data['monthlyBudget'] ?? 0).toDouble();
-          accountBalance = (data['accountBalance'] ?? 0).toDouble();
+          monthlyBudget = (data['monthly_budget'] ?? 0).toDouble();
+          accountBalance = (data['amount_in_account'] ?? 0).toDouble();
           _nameController.text = userName;
           _emailController.text = userEmail;
         });
@@ -65,13 +66,13 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _pickImage() async {
+    if (!_isEditing) return; // ✅ Allow picking image only in edit mode
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         _profileImage = File(image.path);
       });
-      // Here you can also upload the image to Firebase Storage and save URL in Firestore
     }
   }
 
@@ -83,13 +84,21 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: const Color(0xFFE3F0FF),
         foregroundColor: Colors.black,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        title: const Text(
+          "Profile",
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // Profile Info Section
+            // 🔹 Profile Info Section
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -105,37 +114,25 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: const Color(0xFF86E3CE),
+                      GestureDetector(
+                        onTap: _pickImage,
                         child: CircleAvatar(
-                          radius: 38,
-                          backgroundColor: Colors.white,
-                          backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                          child: _profileImage == null
-                              ? Text(
-                                  userName.isNotEmpty ? userName[0] : '',
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _pickImage,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey.shade300,
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: const Icon(Icons.edit, size: 20),
+                          radius: 40,
+                          backgroundColor: const Color(0xFF86E3CE),
+                          child: CircleAvatar(
+                            radius: 38,
+                            backgroundColor: Colors.white,
+                            backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                            child: _profileImage == null
+                                ? Text(
+                                    userName.isNotEmpty ? userName[0] : '',
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  )
+                                : null,
                           ),
                         ),
                       ),
@@ -169,6 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                   ),
+                  // 🔹 Single Edit Icon for all (name, email, image)
                   IconButton(
                     icon: Icon(_isEditing ? Icons.save : Icons.edit, color: Colors.black54),
                     onPressed: () {
@@ -186,7 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
 
-            // Account & Budget Section
+            // 🔹 Account & Budget Section
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -215,7 +213,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
 
-            // Activity Section
+            // 🔹 Activity Section
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -244,7 +242,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
 
-            // Feedback Section
+            // 🔹 Feedback Section
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -280,7 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             const Spacer(),
 
-            // Logout Button
+            // 🔹 Logout Button
             Center(
               child: TextButton.icon(
                 icon: Icon(Icons.logout, color: Colors.red.shade400),
@@ -288,9 +286,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   "Log out",
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red),
                 ),
-                onPressed: () {
-                  FirebaseAuth.instance.signOut();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  // ✅ Redirect to SignIn page after logout
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LogInPage()),
+                  );
                 },
               ),
             ),
