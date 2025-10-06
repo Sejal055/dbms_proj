@@ -994,15 +994,26 @@
 // }
 
 import 'package:flutter/material.dart';
-import 'category_data.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'add_expense_page.dart';
+import 'profile_page.dart';
+import 'history.dart';
+import 'stats_page.dart'; // ✅ Added import for StatsPage
 import 'AllCategoriespage.dart';
 import 'expense.dart';
-import 'history.dart';
-import 'profile_page.dart'; // Import your profile page here
+
+final urgentPayments = [
+  {'title': 'Library Fine', 'due': 'Due in 2 days', 'amount': '₹250', 'status': 'Overdue'},
+  {'title': 'Mess Fee', 'due': 'Due in 5 days', 'amount': '₹3100', 'status': 'Upcoming'},
+];
+
+final categories = [
+  {'title': 'Food & Dining', 'icon': Icons.restaurant, 'color': Color(0xFFFDF5E6)},
+  {'title': 'Transportation', 'icon': Icons.directions_bus, 'color': Color(0xFFEAF6FA)},
+  {'title': 'Education', 'icon': Icons.school, 'color': Color(0xFFF3EDF9)},
+  {'title': 'Entertainment', 'icon': Icons.movie, 'color': Color(0xFFF7E6ED)},
+];
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -1118,6 +1129,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header Row (Name + Profile + Notification)
                 Row(
                   children: [
                     Expanded(
@@ -1125,7 +1137,7 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Good morning, $userName 👋',
+                            'Good morning, $userName! 👋',
                             style: const TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.bold,
@@ -1134,83 +1146,84 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(height: 4),
                           const Text(
                             'Ready to track your expenses today?',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black54,
-                            ),
+                            style: TextStyle(fontSize: 14, color: Colors.black54),
                           ),
                         ],
                       ),
                     ),
-                    const CircleAvatar(
-                      radius: 20,
-                      backgroundImage:
-                          NetworkImage("https://i.pravatar.cc/60"),
+                    // Notification Icon
+                    IconButton(
+                      icon: const Icon(Icons.notifications_none_rounded, color: Colors.black87, size: 26),
+                      onPressed: () {
+                        // later add navigation to notifications
+                      },
+                    ),
+                    const SizedBox(width: 5),
+                    // Profile Avatar
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProfilePage()));
+                      },
+                      child: const CircleAvatar(
+                        radius: 20,
+                        backgroundImage: NetworkImage("https://i.pravatar.cc/60"),
+                      ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 15),
+
+                // Finance News Section (replaces Tip)
                 Container(
                   width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF0DE),
-                    borderRadius: BorderRadius.circular(7),
+                    color: const Color(0xFFDDF4FF),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.lightbulb,
-                          color: Color(0xFFFFA447), size: 17),
-                      SizedBox(width: 7),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 18),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Tip: Try to save 20% of your monthly budget for emergencies!',
+                          'Finance News: RBI launches new digital currency policy to boost cashless transactions!',
                           style: TextStyle(
-                            color: Color(0xFF7D5A29),
+                            color: Color(0xFF005678),
                             fontSize: 13,
+                            fontWeight: FontWeight.w500,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
+                // Budget Summary
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
+                      BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
                     ],
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Amount Left",
-                              style: TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                          Text(
-                            "Monthly Budget",
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
+                      Row(
+                        children: const [
+                          Expanded(child: Text("Amount Left", style: TextStyle(fontWeight: FontWeight.w500))),
+                          Text("Monthly Budget", style: TextStyle(fontWeight: FontWeight.w500)),
                         ],
                       ),
                       const SizedBox(height: 5),
-                      const Row(
-                        children: [
+                      Row(
+                        children: const [
                           Expanded(
                             child: Text(
                               "₹11,970",
@@ -1223,11 +1236,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           Text(
                             "₹15,000",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                           ),
                         ],
                       ),
@@ -1240,11 +1249,7 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        "20.2% of budget used",
-                        style:
-                            TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
+                      Text("20.2% of budget used", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                     ],
                   ),
                 ),
@@ -1252,7 +1257,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Main Body Scroll
+          // Categories and Urgent Payments
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
@@ -1342,10 +1347,8 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 8),
                 ...urgentPayments.map(
                   (item) => Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 17, vertical: 5),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 15, vertical: 13),
+                    margin: const EdgeInsets.symmetric(horizontal: 17, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF9E5),
                       borderRadius: BorderRadius.circular(11),
@@ -1356,39 +1359,17 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                item['title']!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 15,
-                                ),
-                              ),
+                              Text(item['title']!, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
                               const SizedBox(height: 5),
-                              Text(
-                                item['due']!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
+                              Text(item['due']!, style: const TextStyle(fontSize: 12, color: Colors.black54)),
                             ],
                           ),
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              item['amount']!,
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              item['status']!,
-                              style: const TextStyle(
-                                  color: Colors.red, fontSize: 11),
-                            ),
+                            Text(item['amount']!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                            Text(item['status']!, style: const TextStyle(color: Colors.red, fontSize: 11)),
                           ],
                         ),
                       ],
@@ -1402,7 +1383,16 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-      // Bottom Navigation
+      // Floating AI Chatbot Icon
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF7BAFFC),
+        onPressed: () {
+          // later: open ChatBotPage()
+        },
+        child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
+      ),
+
+      // Bottom Navigation Bar
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         elevation: 8,
@@ -1412,60 +1402,31 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               // Home
-              GestureDetector(
-                onTap: () => _onTabTapped(0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.home_rounded,
-                        color: _selectedIndex == 0
-                            ? const Color(0xFF7BAFFC)
-                            : Colors.grey),
-                    Text(
-                      'Home',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: _selectedIndex == 0
-                              ? const Color(0xFF7BAFFC)
-                              : Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-
+              Column(mainAxisSize: MainAxisSize.min, children: const [
+                Icon(Icons.home_rounded, color: Color(0xFF7BAFFC)),
+                Text('Home', style: TextStyle(fontSize: 11, color: Color(0xFF7BAFFC))),
+              ]),
               // History
               GestureDetector(
-                onTap: () => _onTabTapped(1),
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryPage()));
+                },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.history_rounded,
-                        color: _selectedIndex == 1
-                            ? const Color(0xFF7BAFFC)
-                            : Colors.grey),
-                    Text(
-                      'History',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: _selectedIndex == 1
-                              ? const Color(0xFF7BAFFC)
-                              : Colors.grey),
-                    ),
+                    Icon(Icons.history_rounded, color: Colors.grey),
+                    Text('History', style: TextStyle(fontSize: 11, color: Colors.grey)),
                   ],
                 ),
               ),
-
-              // Add Button
+              // Add Expense Button
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFB8A5FF),
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFB8A5FF).withOpacity(0.22),
-                      blurRadius: 8,
-                    ),
+                    BoxShadow(color: const Color(0xFFB8A5FF).withOpacity(0.22), blurRadius: 8),
                   ],
                 ),
                 child: IconButton(
@@ -1473,49 +1434,34 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) {
-                        return AddExpensePopup(
-                          onCancel: () {
-                            Navigator.of(context).pop();
-                          },
-                        );
-                      },
+                      builder: (context) => AddExpensePopup(onCancel: () => Navigator.of(context).pop()),
                     );
                   },
                 ),
               ),
-
-              // Stats Placeholder
+              // ✅ Stats (Now clickable)
               GestureDetector(
                 onTap: () {
-                  // TODO: Implement Stats page navigation
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => StatsPage()));
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.bar_chart_rounded,
-                        color: Colors.grey[600]),
-                    const Text(
-                      'Stats',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
+                    Icon(Icons.bar_chart_rounded, color: Colors.grey[600]),
+                    Text('Stats', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
               ),
-
-              // Menu Placeholder
+              // Chat (replaces Menu)
               GestureDetector(
                 onTap: () {
-                  _showMenuOptions(context);
+                  // later add chat page navigation
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.menu_rounded, color: Colors.grey[600]),
-                    const Text(
-                      'Menu',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
+                    Icon(Icons.chat_rounded, color: Colors.grey[600]),
+                    Text('Chat', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
               ),
