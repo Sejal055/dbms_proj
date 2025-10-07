@@ -7,6 +7,8 @@ import 'history.dart';
 import 'stats_page.dart'; // ✅ Added import for StatsPage
 import 'AllCategoriespage.dart';
 import 'expense.dart';
+import 'stats_page.dart';
+import 'notification_page.dart'; // ✅ Import your existing notification_page.dart
 
 final urgentPayments = [
   {'title': 'Library Fine', 'due': 'Due in 2 days', 'amount': '₹250', 'status': 'Overdue'},
@@ -160,7 +162,10 @@ class _HomePageState extends State<HomePage> {
                     IconButton(
                       icon: const Icon(Icons.notifications_none_rounded, color: Colors.black87, size: 26),
                       onPressed: () {
-                        // later add navigation to notifications
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationPage()),
+                        );
                       },
                     ),
                     const SizedBox(width: 5),
@@ -176,10 +181,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 15),
-
-                // Finance News Section (replaces Tip)
+                // Finance News Section
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -204,9 +207,7 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
                 // Budget Summary
                 Container(
                   decoration: BoxDecoration(
@@ -261,7 +262,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-
           // Categories and Urgent Payments
           Expanded(
             child: ListView(
@@ -387,8 +387,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-
-      // Floating AI Chatbot Icon
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF7BAFFC),
         onPressed: () {
@@ -396,8 +394,6 @@ class _HomePageState extends State<HomePage> {
         },
         child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
       ),
-
-      // Bottom Navigation Bar
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         elevation: 8,
@@ -444,10 +440,12 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
-              // ✅ Stats (Now clickable)
+              // Stats
               GestureDetector(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => StatsPage()));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AnalysisScreen()));
+
+
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -457,7 +455,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              // Chat (replaces Menu)
+              // Chat
               GestureDetector(
                 onTap: () {
                   // later add chat page navigation

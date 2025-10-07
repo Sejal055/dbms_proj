@@ -2,254 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// import 'package:dbms_pro/home_page.dart';
-
-// class ExpenseForm extends StatefulWidget {
-//   @override
-//   _ExpenseFormState createState() => _ExpenseFormState();
-// }
-
-// class _ExpenseFormState extends State<ExpenseForm> {
-//   final _formKey = GlobalKey<FormState>();
-
-//   final TextEditingController _amountInAccountController = TextEditingController();
-//   final TextEditingController _monthBudgetController = TextEditingController();
-
-//   // Function to add expense to Firestore
-//   Future<void> _addExpense() async {
-//     if (_formKey.currentState!.validate()) {
-//       try {
-//         await FirebaseFirestore.instance.collection('expenses').add({
-//           'amountInAccount': double.parse(_amountInAccountController.text.trim()),
-//           'monthBudget': double.parse(_monthBudgetController.text.trim()),
-//           'createdAt': FieldValue.serverTimestamp(),
-//         });
-
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(content: Text("Details saved successfully!")),
-//         );
-
-//         // Clear form after submit
-//         _amountInAccountController.clear();
-//         _monthBudgetController.clear();
-
-//         // Navigate to the home page after successful submission
-//         if (mounted) {
-//           Navigator.pushReplacement(
-//             context,
-//             MaterialPageRoute(builder: (context) => HomePage()),
-//           );
-//         }
-//       } catch (e) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(content: Text("Error: $e")),
-//         );
-//       }
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _amountInAccountController.dispose();
-//     _monthBudgetController.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: SingleChildScrollView(
-//         child: Padding(
-//           padding: const EdgeInsets.all(24.0),
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             crossAxisAlignment: CrossAxisAlignment.stretch,
-//             children: [
-//               const SizedBox(height: 50),
-//               const Text(
-//                 "Welcome to\nBudget Buddy!",
-//                 textAlign: TextAlign.center,
-//                 style: TextStyle(
-//                   fontSize: 32,
-//                   fontWeight: FontWeight.bold,
-//                   color: Colors.black,
-//                 ),
-//               ),
-//               const SizedBox(height: 10),
-//               const Text(
-//                 "Let's make budgeting simple\nand fun.",
-//                 textAlign: TextAlign.center,
-//                 style: TextStyle(
-//                   fontSize: 16,
-//                   color: Colors.grey,
-//                 ),
-//               ),
-//               const SizedBox(height: 50),
-//               const Text(
-//                 "Enter your details",
-//                 style: TextStyle(
-//                   fontSize: 18,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               const SizedBox(height: 10),
-//               Container(
-//                 decoration: BoxDecoration(
-//                   color: const Color(0xFFE0E0E0),
-//                   borderRadius: BorderRadius.circular(15),
-//                   boxShadow: [
-//                     BoxShadow(
-//                       color: Colors.grey.withOpacity(0.3),
-//                       spreadRadius: 2,
-//                       blurRadius: 5,
-//                       offset: const Offset(0, 3),
-//                     ),
-//                   ],
-//                 ),
-//                 padding: const EdgeInsets.all(20),
-//                 child: Form(
-//                   key: _formKey,
-//                   child: Column(
-//                     children: [
-//                       // Amount in Account
-//                       TextFormField(
-//                         controller: _amountInAccountController,
-//                         decoration: InputDecoration(
-//                           labelText: "Amount in Account",
-//                           labelStyle: const TextStyle(color: Colors.black54),
-//                           filled: true,
-//                           fillColor: Colors.white,
-//                           border: OutlineInputBorder(
-//                             borderRadius: BorderRadius.circular(10),
-//                             borderSide: BorderSide.none,
-//                           ),
-//                           prefixText: "Rs. ",
-//                         ),
-//                         keyboardType: TextInputType.number,
-//                         validator: (value) =>
-//                             value == null || value.isEmpty ? "Enter amount" : null,
-//                       ),
-
-//                       const SizedBox(height: 16),
-
-//                       // Monthly Budget
-//                       TextFormField(
-//                         controller: _monthBudgetController,
-//                         decoration: InputDecoration(
-//                           labelText: "Monthly Budget",
-//                           labelStyle: const TextStyle(color: Colors.black54),
-//                           filled: true,
-//                           fillColor: Colors.white,
-//                           border: OutlineInputBorder(
-//                             borderRadius: BorderRadius.circular(10),
-//                             borderSide: BorderSide.none,
-//                           ),
-//                           prefixText: "Rs. ",
-//                         ),
-//                         keyboardType: TextInputType.number,
-//                         validator: (value) =>
-//                             value == null || value.isEmpty ? "Enter monthly budget" : null,
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 30),
-//               ElevatedButton(
-//                 onPressed: _addExpense,
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: const Color(0xFF86E3CE),
-//                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(30),
-//                   ),
-//                   shadowColor: Colors.grey,
-//                   elevation: 5,
-//                 ),
-//                 child: const Text(
-//                   "Lets go!",
-//                   style: TextStyle(
-//                     fontSize: 18,
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.black,
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-/*class ExpensesPage extends StatelessWidget {
-  final String category;
-  const ExpensesPage({Key? key, required this.category}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    return Scaffold(
-      appBar: AppBar(title: Text('Expenses - $category')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('expenses')
-            .where('category', isEqualTo: category)
-            .orderBy('timestamp', descending: true)
-            //.where('timestamp', isNotEqualTo: null)
-            .snapshots(),
-        // builder: (context, snapshot) {
-        //   if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
-        //   if (snapshot.data!.docs.isEmpty) return Center(child: Text('No expenses in "$category"'));
-        //   return ListView(
-        //     children: snapshot.data!.docs.map((doc) {
-        //       final d = doc.data() as Map<String, dynamic>;
-        //       return ListTile(
-        //         title: Text(d['expense_name']),
-        //         subtitle: Text(d['expense_type'] ?? 'Expense'),
-        //         trailing: Text('₹${d['expense_amount']}', style: TextStyle(fontWeight: FontWeight.bold)),
-        //       );
-        //     }).toList(),
-        //   );
-        // },
-        builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Error loading expenses'));
-        }
-        if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
-        }
-        // Filter out documents without timestamp so ListView gets only valid data
-        //final docs = snapshot.data!.docs.where((doc) => doc.data()['timestamp'] != null).toList();
-        final docs = snapshot.data!.docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return data['timestamp'] != null;
-        }).toList();
-
-        
-        if (docs.isEmpty) {
-          return Center(child: Text('No expenses in "$category"'));
-        }
-        return ListView(
-          children: docs.map((doc) {
-            final d = doc.data() as Map<String, dynamic>;
-            return ListTile(
-              title: Text(d['expense_name']),
-              subtitle: Text(d['expense_type'] ?? 'Expense'),
-              trailing: Text('₹${d['expense_amount']}', style: TextStyle(fontWeight: FontWeight.bold)),
-            );
-          }).toList(),
-        );
-      },
-
-      ),
-    );
-  }
-}*/
-
 class ExpensesPage extends StatelessWidget {
   final String category;
 
@@ -260,82 +12,222 @@ class ExpensesPage extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      // Gradient AppBar background for branding and flow
       appBar: AppBar(
-        title: Text('Expenses - $category'),
+        backgroundColor: Colors.deepPurpleAccent,
+        elevation: 0,
+        title: Text(
+          'Expenses - $category',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('expenses')
-            .where('category', isEqualTo: category)
-            //.orderBy('createdAtLocal', descending: true) // ✅ now safe
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            // Optional debug print
-            print('Firestore error: ${snapshot.error}');
-            return const Center(child: Text('Error loading expenses'));
-          }
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFDEE6FB), Color(0xFFD6EAF8), Color(0xFFFDEBEE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user!.uid)
+              .collection('expenses')
+              .where('category', isEqualTo: category)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Center(child: Text('Error loading expenses'));
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final docs = snapshot.data!.docs;
 
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            // Compute total expense and total income
+            double totalExpense = 0, totalIncome = 0;
+            for (final doc in docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final type = (data['expense_type'] ?? 'Expense').toString().toLowerCase();
+              final amount = (data['expense_amount'] is num)
+                  ? (data['expense_amount'] as num).toDouble()
+                  : 0.0;
+              if (type == 'expense') {
+                totalExpense += amount;
+              } else if (type == 'income') {
+                totalIncome += amount;
+              }
+            }
 
-          final docs = snapshot.data!.docs;
-
-          if (docs.isEmpty) {
-            return Center(child: Text('No expenses in "$category"'));
-          }
-
-          // ✅ Calculate total amount
-          final double total = docs.fold(0, (sum, doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final amount = data['expense_amount'];
-            return sum + ((amount is num) ? amount.toDouble() : 0);
-          });
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ✅ Display total amount
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Total: ₹${total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            return Column(
+              children: [
+                // Top summary card
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.97),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 12,
+                          color: Colors.black.withOpacity(0.08),
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 22, horizontal: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Summary',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.deepPurpleAccent,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.money_off, color: Colors.redAccent, size: 26),
+                                  SizedBox(height: 5),
+                                  Text(
+                                    'Total Expense',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    '₹${totalExpense.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(width: 1, height: 44, color: Colors.grey[200]),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.attach_money, color: Colors.green, size: 26),
+                                  SizedBox(height: 5),
+                                  Text(
+                                    'Total Income',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    '₹${totalIncome.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      color: Colors.green,
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                 ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
+                  if (docs.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'No expenses in "$category"',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
                     final name = data['expense_name'] ?? 'Unnamed';
                     final type = data['expense_type'] ?? 'Expense';
-                    final amount = data['expense_amount'];
-                    final displayAmount =
-                        (amount is num) ? amount.toString() : '0.00';
+                    final amount = (data['expense_amount'] is num)
+                        ? (data['expense_amount'] as num).toDouble()
+                        : 0.0;
+                    final displayAmount = '₹${amount.toStringAsFixed(2)}';
 
-                    return ListTile(
-                      title: Text(name),
-                      subtitle: Text(type),
-                      trailing: Text(
-                        '₹$displayAmount',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 6),
+                      child: Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            type.toString().toLowerCase() == 'income'
+                                ? Icons.arrow_circle_up
+                                : Icons.arrow_circle_down,
+                            color: type.toString().toLowerCase() == 'income'
+                            ? Colors.green
+                                : Colors.redAccent,
+                          ),
+                          title: Text(
+                            name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Text(
+                            type,
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          trailing: Text(
+                            displayAmount,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: type.toString().toLowerCase() == 'income'
+                                  ? Colors.green
+                                  : Colors.redAccent,
+                            ),
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+          ],
+        );
+      },
+    ),
+  ),
+);
+}
 }

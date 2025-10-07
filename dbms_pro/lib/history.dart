@@ -13,74 +13,74 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   final user = FirebaseAuth.instance.currentUser;
 
-  double totalBalance = 0.0;
-  double monthlyBudget = 0.0;
-  double totalExpense = 0.0;
+  double totalAmountInAccount = 0;
+  double monthlyBudget = 0;
+  double totalIncome = 0;
+  double totalExpense = 0;
+
+  bool _userDataLoaded = false; // ✅ Prevents blinking
 
   @override
   void initState() {
     super.initState();
-    fetchUserData();
+    _fetchUserData(); // ✅ Load user data once instead of inside StreamBuilder
   }
 
-  Future<void> fetchUserData() async {
+  Future<void> _fetchUserData() async {
     if (user == null) return;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
     if (doc.exists) {
-      final data = doc.data()!;
       setState(() {
-        totalBalance = (data['amount_in_account'] ?? 0).toDouble();
-        monthlyBudget = (data['monthly_budget'] ?? 0).toDouble();
+        totalAmountInAccount = (doc.data()?['amount_in_account'] ?? 0).toDouble();
+        monthlyBudget = (doc.data()?['monthly_budget'] ?? 0).toDouble();
+        _userDataLoaded = true;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Theme colors matching login page 🌈
+    const Color gradientStart = Color(0xFFE3F0FF);
+    const Color gradientEnd = Color(0xFFF8EFFB);
+    const Color primaryBlue = Color(0xFF7BAFFC);
+    const Color accentPurple = Color(0xFFD6A8FF);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F5F9),
+      backgroundColor: gradientEnd,
       body: Column(
         children: [
-          _buildTopSection(context),
-          Expanded(
-            child: _buildTransactionList(),
-          ),
+          _buildTopSection(context, primaryBlue, accentPurple),
+          Expanded(child: _buildTransactionList()),
           const SizedBox(height: 10),
         ],
       ),
     );
   }
 
-  Widget _buildTopSection(BuildContext context) {
-    const Color primaryGreen = Color(0xFF57CC99);
-    const Color primaryDarkBlue = Color(0xFF0F2C67);
-    const Color primaryBackground = Color(0xFFB1E8CE);
-
+  Widget _buildTopSection(BuildContext context, Color primaryBlue, Color accentPurple) {
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top,
         bottom: 20,
       ),
       decoration: BoxDecoration(
-        color: primaryBackground,
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            primaryGreen.withOpacity(0.9),
-            primaryBackground,
-          ],
+          colors: [primaryBlue.withOpacity(0.9), accentPurple.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
       child: Column(
         children: [
           _buildAppBar(),
           const SizedBox(height: 10),
-          _buildTotalBalanceCard(primaryDarkBlue),
+          _buildTotalBalanceCard(primaryBlue),
           const SizedBox(height: 20),
-          _buildSummaryBar(primaryGreen),
+          _buildSummaryBar(primaryBlue),
           const SizedBox(height: 10),
-          _buildExpenseProgress(),
+          _buildExpenseProgress(primaryBlue),
         ],
       ),
     );
@@ -94,12 +94,10 @@ class _HistoryPageState extends State<HistoryPage> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
           ),
           const Text(
-            'Transaction',
+            'History', // ✅ Changed title
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -116,7 +114,9 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildTotalBalanceCard(Color darkColor) {
+  Widget _buildTotalBalanceCard(Color color) {
+    double displayedBalance = totalAmountInAccount + totalIncome - totalExpense;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.symmetric(vertical: 15),
@@ -125,7 +125,7 @@ class _HistoryPageState extends State<HistoryPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: darkColor.withOpacity(0.1),
+            color: color.withOpacity(0.2),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -144,11 +144,11 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
             const SizedBox(height: 5),
             Text(
-              '₹${(totalBalance - totalExpense).toStringAsFixed(2)}',
+              '₹${displayedBalance.toStringAsFixed(2)}',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w900,
-                color: darkColor,
+                color: color,
               ),
             ),
           ],
@@ -157,7 +157,9 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildSummaryBar(Color greenColor) {
+  Widget _buildSummaryBar(Color color) {
+    double displayedBalance = totalAmountInAccount + totalIncome - totalExpense;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -168,7 +170,7 @@ class _HistoryPageState extends State<HistoryPage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Icon(Icons.account_balance_wallet_outlined,
-                    size: 20, color: greenColor),
+                    size: 20, color: Colors.white),
                 const SizedBox(width: 5),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +179,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         style: TextStyle(fontSize: 12, color: Colors.white)),
                     const SizedBox(height: 2),
                     Text(
-                      '₹${(totalBalance - totalExpense).toStringAsFixed(2)}',
+                      '₹${displayedBalance.toStringAsFixed(2)}',
                       style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -188,17 +190,13 @@ class _HistoryPageState extends State<HistoryPage> {
               ],
             ),
           ),
-          Container(
-            height: 40,
-            width: 1,
-            color: Colors.white.withOpacity(0.5),
-          ),
+          Container(height: 40, width: 1, color: Colors.white.withOpacity(0.5)),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Icon(Icons.monetization_on_outlined,
-                    size: 20, color: greenColor),
+                    size: 20, color: Colors.white),
                 const SizedBox(width: 5),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,10 +206,10 @@ class _HistoryPageState extends State<HistoryPage> {
                     const SizedBox(height: 2),
                     Text(
                       '-₹${totalExpense.toStringAsFixed(2)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.red.shade300),
+                          color: Color(0xFFEE6C6C)),
                     ),
                   ],
                 ),
@@ -223,9 +221,11 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildExpenseProgress() {
-    double progressValue =
-        monthlyBudget != 0 ? (totalExpense / monthlyBudget).clamp(0, 1) : 0;
+  Widget _buildExpenseProgress(Color color) {
+    double usedPercentage = monthlyBudget == 0
+        ? 0
+        : (totalExpense / monthlyBudget).clamp(0, 1).toDouble();
+    int percent = (usedPercentage * 100).toInt();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -237,10 +237,9 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
-                    value: progressValue,
-                    backgroundColor: Colors.white.withOpacity(0.5),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFF0F2C67)),
+                    value: usedPercentage,
+                    backgroundColor: Colors.white.withOpacity(0.3),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                     minHeight: 10,
                   ),
                 ),
@@ -257,15 +256,15 @@ class _HistoryPageState extends State<HistoryPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${(progressValue * 100).toStringAsFixed(0)}%',
+                '$percent%',
                 style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14),
               ),
-              const Text(
-                'Of your monthly budget used',
-                style: TextStyle(color: Colors.white, fontSize: 14),
+              Text(
+                '$percent% of your budget used',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ],
           ),
@@ -275,9 +274,7 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _buildTransactionList() {
-    if (user == null) {
-      return const Center(child: Text("No user found"));
-    }
+    if (user == null) return const Center(child: Text("No user found"));
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -287,6 +284,10 @@ class _HistoryPageState extends State<HistoryPage> {
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
+        if (!_userDataLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -301,17 +302,13 @@ class _HistoryPageState extends State<HistoryPage> {
         }
 
         final expenses = snapshot.data!.docs;
-
-        totalExpense = 0.0;
+        totalIncome = 0;
+        totalExpense = 0;
 
         final List<TransactionItem> transactions = expenses.map((expense) {
-          final data = expense.data() as Map<String, dynamic>;
-
-          final name = data['expense_name'] ?? '';
-          final amount = (data['expense_amount'] ?? 0).toDouble();
-          final type = data['type'] ?? 'Expense';
-          final category = data['category'] ?? '';
-          final timestamp = data['timestamp'] as Timestamp?;
+          final name = expense['expense_name'] ?? '';
+          final category = expense['category'] ?? '';
+          final timestamp = expense['timestamp'] as Timestamp?;
           final date = timestamp != null
               ? DateFormat('MMMM dd').format(timestamp.toDate())
               : '';
@@ -319,14 +316,19 @@ class _HistoryPageState extends State<HistoryPage> {
               ? DateFormat('HH:mm').format(timestamp.toDate())
               : '';
 
-          if (type != 'Income') {
-            totalExpense += amount;
+          String type = expense['expense_type'] ?? 'Expense';
+          double amount = (expense['expense_amount'] ?? 0).toDouble();
+
+          if (type == 'Income') {
+            totalIncome += amount;
           } else {
-            totalBalance += amount;
+            totalExpense += amount;
           }
 
           return TransactionItem(
-            icon: type == 'Income' ? Icons.account_balance_wallet : Icons.money,
+            icon: type == 'Income'
+                ? Icons.account_balance_wallet
+                : Icons.money_outlined,
             name: name,
             time: time,
             date: date,
@@ -397,19 +399,6 @@ class _HistoryPageState extends State<HistoryPage> {
               child: Icon(transaction.icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 15),
-            Column(
-              children: [
-                Expanded(
-                    child:
-                        Container(width: 2, color: iconColor.withOpacity(0.3))),
-                Container(
-                    width: 2, height: 10, color: iconColor.withOpacity(0.7)),
-                Expanded(
-                    child:
-                        Container(width: 2, color: iconColor.withOpacity(0.3))),
-              ],
-            ),
-            const SizedBox(width: 15),
             Expanded(
               child: Row(
                 children: [
@@ -422,21 +411,22 @@ class _HistoryPageState extends State<HistoryPage> {
                         Text(
                           transaction.name,
                           style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F2C67)),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F2C67),
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${transaction.time} - ${transaction.date}',
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.grey.shade600),
+                          style:
+                              TextStyle(fontSize: 13, color: Colors.grey.shade600),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           transaction.category,
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.grey.shade600),
+                          style:
+                              TextStyle(fontSize: 13, color: Colors.grey.shade600),
                         ),
                       ],
                     ),
@@ -467,9 +457,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final Map<String, List<TransactionItem>> grouped = {};
     for (var transaction in transactions) {
       final month = transaction.date.split(' ')[0];
-      if (!grouped.containsKey(month)) {
-        grouped[month] = [];
-      }
+      grouped.putIfAbsent(month, () => []);
       grouped[month]!.add(transaction);
     }
     return grouped;
