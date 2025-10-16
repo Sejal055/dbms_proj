@@ -17,7 +17,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
   final TextEditingController amountController = TextEditingController();
   String? selectedCategory;
 
-  final List<String> categories = [
+  final List<String> baseCategories = [
     'Food & Dining',
     'Transportation',
     'Education',
@@ -25,8 +25,45 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     'Others',
   ];
 
+  List<String> allCategories = []; // 🔹 Combined list (default + user-created)
+  bool isLoadingCategories = true; // 🔹 To show loading state
+
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories(); // 🔹 Load categories when popup opens
+  }
+
+  Future<void> _loadCategories() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('categories')
+          .get();
+
+      final userCategories = snapshot.docs
+          .map((doc) => doc['name']?.toString() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
+
+      setState(() {
+        allCategories = [...baseCategories, ...userCategories.toSet()];
+        isLoadingCategories = false;
+      });
+    } catch (e) {
+      setState(() {
+        allCategories = [...baseCategories];
+        isLoadingCategories = false;
+      });
+    }
+  }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -174,27 +211,32 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  onChanged: (v) => setState(() => selectedCategory = v),
-                  items: categories
-                      .map((cat) => DropdownMenuItem(
-                            value: cat,
-                            child: Text(cat),
-                          ))
-                      .toList(),
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
-                  validator: (v) => (v == null) ? 'Select a category' : null,
-                ),
+
+                // 🔹 Dynamic Category Dropdown
+                isLoadingCategories
+                    ? const Center(child: CircularProgressIndicator())
+                    : DropdownButtonFormField<String>(
+                        value: selectedCategory,
+                        onChanged: (v) => setState(() => selectedCategory = v),
+                        items: allCategories
+                            .map((cat) => DropdownMenuItem(
+                                  value: cat,
+                                  child: Text(cat),
+                                ))
+                            .toList(),
+                        decoration: InputDecoration(
+                          labelText: 'Category',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                        ),
+                        validator: (v) => (v == null) ? 'Select a category' : null,
+                      ),
+
                 const SizedBox(height: 28),
                 SizedBox(
                   width: double.infinity,
