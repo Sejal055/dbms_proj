@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "885299720966",
+    "project_id": "budget-buddy-a64aa",
+    "storage_bucket": "budget-buddy-a64aa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:885299720966:android:825058513b610f8a6a2487",
+        "android_client_info": {
+          "package_name": "com.example.dbms_pro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA47raK57zbRMWEOrYfZLX9J9p96mBTdJI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
