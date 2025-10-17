@@ -32,8 +32,14 @@ class _HistoryPageState extends State<HistoryPage> {
         await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
     if (doc.exists) {
       setState(() {
-        totalAmountInAccount = (doc.data()?['amount_in_account'] ?? 0).toDouble();
-        monthlyBudget = (doc.data()?['monthly_budget'] ?? 0).toDouble();
+        final data = doc.data();
+        totalAmountInAccount =
+            (data?['amount_in_account'] ?? 0).toDouble();
+        monthlyBudget = (data?['monthly_budget'] ?? 0).toDouble();
+        _userDataLoaded = true;
+      });
+    } else {
+      setState(() {
         _userDataLoaded = true;
       });
     }
@@ -246,7 +252,7 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
               const SizedBox(width: 10),
               Text(
-                '₹${monthlyBudget.toStringAsFixed(2)}',
+                '₹${monthlyBudget.toStringAsFixed(0)}',
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ],
@@ -306,18 +312,29 @@ class _HistoryPageState extends State<HistoryPage> {
         totalExpense = 0;
 
         final List<TransactionItem> transactions = expenses.map((expense) {
-          final name = expense['expense_name'] ?? '';
-          final category = expense['category'] ?? '';
-          final timestamp = expense['timestamp'] as Timestamp?;
-          final date = timestamp != null
+          // Read document as map to avoid exceptions when a field is missing
+          final data = expense.data() as Map<String, dynamic>;
+
+          // support multiple possible field names (backwards compatibility)
+          final String name =
+              (data['expense_name'] ?? data['name'] ?? '').toString();
+          final String category = (data['category'] ?? '').toString();
+
+          final Timestamp? timestamp =
+              (data['timestamp'] is Timestamp) ? data['timestamp'] as Timestamp : null;
+          final String date = timestamp != null
               ? DateFormat('MMMM dd').format(timestamp.toDate())
               : '';
-          final time = timestamp != null
+          final String time = timestamp != null
               ? DateFormat('HH:mm').format(timestamp.toDate())
               : '';
 
-          String type = expense['expense_type'] ?? 'Expense';
-          double amount = (expense['expense_amount'] ?? 0).toDouble();
+          final String type =
+              (data['expense_type'] ?? data['type'] ?? 'Expense').toString();
+
+          final num rawAmount =
+              (data['expense_amount'] ?? data['amount'] ?? 0);
+          final double amount = (rawAmount is num) ? rawAmount.toDouble() : 0.0;
 
           if (type == 'Income') {
             totalIncome += amount;
@@ -456,7 +473,9 @@ class _HistoryPageState extends State<HistoryPage> {
       List<TransactionItem> transactions) {
     final Map<String, List<TransactionItem>> grouped = {};
     for (var transaction in transactions) {
-      final month = transaction.date.split(' ')[0];
+      // handle empty/alternate date formats gracefully
+      final parts = transaction.date.split(' ');
+      final month = parts.isNotEmpty && parts[0].isNotEmpty ? parts[0] : 'Unknown';
       grouped.putIfAbsent(month, () => []);
       grouped[month]!.add(transaction);
     }

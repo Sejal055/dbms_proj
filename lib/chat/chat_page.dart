@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'individual_chat_page.dart';
+import 'group_chat_page.dart';
+import 'add_people_page.dart'; // ✅ Added this import for Add People navigation
 
 // --- COLORS ---
 const Color primaryColor = Color(0xFF7BAFFC);
@@ -162,27 +165,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (_searchQuery.isEmpty) return data;
     if (T == ChatTileData) {
       return data
-          .where((item) =>
-              (item as ChatTileData)
-                  .name
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()))
+          .where((item) => (item as ChatTileData)
+              .name
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()))
           .toList() as List<T>;
     } else if (T == GroupData) {
       return data
-          .where((item) =>
-              (item as GroupData)
-                  .name
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()))
+          .where((item) => (item as GroupData)
+              .name
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()))
           .toList() as List<T>;
     } else if (T == Settlement) {
       return data
-          .where((item) =>
-              (item as Settlement)
-                  .personName
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()))
+          .where((item) => (item as Settlement)
+              .personName
+              .toLowerCase()
+              .contains(_searchQuery.toLowerCase()))
           .toList() as List<T>;
     }
     return data;
@@ -195,9 +195,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
       return ListView.builder(
         padding: const EdgeInsets.only(top: 10, bottom: 20),
         itemCount: filtered.length,
-        itemBuilder: (context, index) => ChatTile(
-          data: filtered[index],
-          highlight: _searchQuery,
+        itemBuilder: (context, index) => InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => IndividualChatPage(
+                  name: filtered[index].name,
+                  imageUrl: dummyUsers[filtered[index].userId] ??
+                      dummyUsers.values.first,
+                ),
+              ),
+            );
+          },
+          child: ChatTile(
+            data: filtered[index],
+            highlight: _searchQuery,
+          ),
         ),
       );
     } else if (_selectedTabIndex == 1) {
@@ -216,6 +230,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
             leading: const Icon(Icons.group, color: primaryColor, size: 36),
             title: _highlightText(filtered[index].name, _searchQuery),
             subtitle: Text("${filtered[index].members} members"),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GroupChatPage(
+                    groupName: filtered[index].name,
+                    groupImageUrl: 'https://i.pravatar.cc/150?img=5',
+                  ),
+                ),
+              );
+            },
           ),
         ),
       );
@@ -241,9 +266,34 @@ class _ChatListScreenState extends State<ChatListScreen> {
             subtitle: Text(filtered[index].youOwe
                 ? "You owe ₹${filtered[index].amount.toStringAsFixed(0)}"
                 : "${filtered[index].personName} owes you ₹${filtered[index].amount.toStringAsFixed(0)}"),
-            trailing: Text(
-              _formatDate(filtered[index].date),
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            trailing: PopupMenuButton<String>(
+              onSelected: (value) {
+                setState(() {
+                  if (value == 'Mark Paid') {
+                    filtered[index] =
+                        filtered[index].copyWith(youOwe: false);
+                  } else if (value == 'Delete') {
+                    dummyOverallData.remove(filtered[index]);
+                  }
+                });
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                    value: 'Mark Paid', child: Text('Mark as Paid')),
+                const PopupMenuItem(
+                    value: 'Left to Pay', child: Text('Left to Pay')),
+                const PopupMenuItem(value: 'Delete', child: Text('Delete')),
+              ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatDate(filtered[index].date),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                ],
+              ),
             ),
           ),
         ),
@@ -428,43 +478,28 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           ),
           if (_showMenu) _buildMenuBox(),
+
+          // ✅ FloatingActionButton navigates to AddPeoplePage
           Positioned(
             bottom: 25,
             right: 20,
             child: FloatingActionButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddPeoplePage()),
-              ),
               backgroundColor: primaryColor,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddPeoplePage(), // ✅ Working navigation
+                  ),
+                );
+              },
               child: const Icon(Icons.add, color: Colors.white, size: 30),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// --- ADD PEOPLE PAGE ---
-class AddPeoplePage extends StatelessWidget {
-  const AddPeoplePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: secondaryColor.withOpacity(0.1),
-      appBar: AppBar(
-        backgroundColor: primaryColor,
-        title: const Text("Add People"),
-      ),
-      body: const Center(
-        child: Text(
-          "Add new friends or groups here.",
-          style: TextStyle(fontSize: 18),
-        ),
       ),
     );
   }
@@ -513,6 +548,16 @@ class Settlement {
     required this.date,
     required this.imageUrl,
   });
+
+  Settlement copyWith({bool? youOwe}) {
+    return Settlement(
+      personName: personName,
+      amount: amount,
+      youOwe: youOwe ?? this.youOwe,
+      date: date,
+      imageUrl: imageUrl,
+    );
+  }
 }
 
 // --- CHAT TILE ---
@@ -563,24 +608,32 @@ class ChatTile extends StatelessWidget {
             NetworkImage(dummyUsers[data.userId] ?? dummyUsers['zoey_dev']!),
       ),
       title: _highlightText(data.name, highlight),
-      subtitle: Text(data.message,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-              color: data.isUnread ? Colors.black : Colors.grey[600])),
+      subtitle: Text(
+        data.message,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: data.isUnread ? Colors.black : Colors.grey[600],
+        ),
+      ),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(_formatTime(data.time),
-              style: TextStyle(
-                  fontSize: 12,
-                  color: data.isUnread ? unreadCountColor : Colors.grey[600],
-                  fontWeight:
-                      data.isUnread ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            _formatTime(data.time),
+            style: TextStyle(
+              fontSize: 12,
+              color: data.isUnread ? unreadCountColor : Colors.grey[600],
+              fontWeight:
+                  data.isUnread ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
           if (data.status != MessageStatus.justNow)
             Icon(
-              data.status == MessageStatus.read ? Icons.done_all : Icons.done,
+              data.status == MessageStatus.read
+                  ? Icons.done_all
+                  : Icons.done,
               size: 16,
               color: data.status == MessageStatus.read
                   ? readColor
@@ -588,6 +641,18 @@ class ChatTile extends StatelessWidget {
             ),
         ],
       ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => IndividualChatPage(
+              name: data.name,
+              imageUrl:
+                  dummyUsers[data.userId] ?? dummyUsers.values.first,
+            ),
+          ),
+        );
+      },
     );
   }
 }

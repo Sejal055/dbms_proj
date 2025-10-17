@@ -25,8 +25,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     'Others',
   ];
 
-  List<String> allCategories = []; // 🔹 Combined list (default + user-created)
-  bool isLoadingCategories = true; // 🔹 To show loading state
+  List<String> allCategories = [];
+  bool isLoadingCategories = true;
 
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
@@ -34,7 +34,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
   @override
   void initState() {
     super.initState();
-    _loadCategories(); // 🔹 Load categories when popup opens
+    _loadCategories();
   }
 
   Future<void> _loadCategories() async {
@@ -94,19 +94,29 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     final amount = double.tryParse(amountController.text.trim()) ?? 0.0;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('expenses')
-          .add({
+      // ✅ FIXED FIRESTORE WRITE LOGIC (keeps consistent field names)
+      final expenseData = {
         'expense_name': name,
         'expense_amount': amount,
         'expense_type': isIncome ? 'Income' : 'Expense',
         'category': selectedCategory,
         'timestamp': FieldValue.serverTimestamp(),
-      });
+        'created_at': DateTime.now().toIso8601String(),
+      };
 
-      Navigator.of(context).pop(); // Close popup after saving
+      // Save inside user's expenses subcollection
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('expenses')
+          .add(expenseData);
+
+      // ✅ Clear inputs & close popup
+      nameController.clear();
+      amountController.clear();
+      selectedCategory = null;
+
+      Navigator.of(context).pop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save expense: $e')),
@@ -154,8 +164,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                       selected: !isIncome,
                       onSelected: (_) => setState(() => isIncome = false),
                       selectedColor: const Color(0xFFD6A8F8),
-                      labelStyle:
-                          TextStyle(color: !isIncome ? Colors.white : Colors.black),
+                      labelStyle: TextStyle(
+                          color: !isIncome ? Colors.white : Colors.black),
                       backgroundColor: Colors.white,
                     ),
                     const SizedBox(width: 16),
@@ -164,8 +174,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                       selected: isIncome,
                       onSelected: (_) => setState(() => isIncome = true),
                       selectedColor: const Color(0xFFA3CEEB),
-                      labelStyle:
-                          TextStyle(color: isIncome ? Colors.white : Colors.black),
+                      labelStyle: TextStyle(
+                          color: isIncome ? Colors.white : Colors.black),
                       backgroundColor: Colors.white,
                     ),
                   ],
@@ -183,8 +193,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none),
                     prefixIcon: const Icon(Icons.drive_file_rename_outline),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -206,13 +216,12 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none),
                     prefixIcon: const Icon(Icons.currency_rupee),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // 🔹 Dynamic Category Dropdown
                 isLoadingCategories
                     ? const Center(child: CircularProgressIndicator())
                     : DropdownButtonFormField<String>(
@@ -234,7 +243,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 16),
                         ),
-                        validator: (v) => (v == null) ? 'Select a category' : null,
+                        validator: (v) =>
+                            (v == null) ? 'Select a category' : null,
                       ),
 
                 const SizedBox(height: 28),
@@ -261,7 +271,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                       ),
                       child: Center(
                         child: _isSaving
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
                             : const Text(
                                 'Save Expense',
                                 style: TextStyle(
