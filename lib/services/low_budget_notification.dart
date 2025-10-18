@@ -4,6 +4,25 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+Future<void> saveBudgetNotification() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  final notificationData = {
+    'title': 'Budget Warning',
+    'body': 'Your spending is about to exceed your monthly budget!',
+    'timestamp': FieldValue.serverTimestamp(),
+    'read': false,
+  };
+
+  await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('notifications')
+      .add(notificationData);
+}
+
+
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
