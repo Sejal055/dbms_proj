@@ -7,8 +7,7 @@ import 'package:intl/intl.dart';
 class CategoryDetailPage extends StatefulWidget {
   final String category;
 
-  const CategoryDetailPage({Key? key, required this.category})
-      : super(key: key);
+  const CategoryDetailPage({super.key, required this.category});
 
   @override
   State<CategoryDetailPage> createState() => _CategoryDetailPageState();

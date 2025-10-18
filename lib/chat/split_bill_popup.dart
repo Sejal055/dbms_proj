@@ -26,7 +26,9 @@ class _SplitBillPopupState extends State<SplitBillPopup> {
   Future<void> submitBill() async {
     if (_billNameController.text.isEmpty ||
         _amountController.text.isEmpty ||
-        selectedCategory == null) return;
+        selectedCategory == null) {
+      return;
+    }
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final firestore = FirebaseFirestore.instance;
@@ -147,7 +149,7 @@ class _SplitBillPopupState extends State<SplitBillPopup> {
                       .toList();
 
                   return DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     items: categories
                         .map((cat) => DropdownMenuItem(
                               value: cat,

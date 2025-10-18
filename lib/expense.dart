@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class ExpensesPage extends StatelessWidget {
   final String category;
 
-  const ExpensesPage({Key? key, required this.category}) : super(key: key);
+  const ExpensesPage({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {

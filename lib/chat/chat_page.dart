@@ -169,21 +169,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
               .name
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()))
-          .toList() as List<T>;
+          .toList();
     } else if (T == GroupData) {
       return data
           .where((item) => (item as GroupData)
               .name
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()))
-          .toList() as List<T>;
+          .toList();
     } else if (T == Settlement) {
       return data
           .where((item) => (item as Settlement)
               .personName
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()))
-          .toList() as List<T>;
+          .toList();
     }
     return data;
   }

@@ -31,60 +31,60 @@ class NotificationPage extends StatelessWidget {
   final List<Map<String, List<NotificationItem>>> groupedNotifications = const [
     {
       'Today': [
-        const NotificationItem( // <--- ADDED const HERE
+        NotificationItem( // <--- ADDED const HERE
           title: 'Reminder!',
           description: 'Set up your automatic savings to meet your savings goal...',
           icon: Icons.notifications_none_rounded,
-          iconBackgroundColor: const Color(0xFFEAF6FA), // <--- ADDED const HERE
+          iconBackgroundColor: Color(0xFFEAF6FA), // <--- ADDED const HERE
           timeAndDate: '17:00 - April 24',
         ),
-        const NotificationItem( // <--- ADDED const HERE
+        NotificationItem( // <--- ADDED const HERE
           title: 'New Update',
           description: 'Set up your automatic savings to meet your savings goal...',
           icon: Icons.star_border_rounded,
-          iconBackgroundColor: const Color(0xFFFDF5E6), // <--- ADDED const HERE
+          iconBackgroundColor: Color(0xFFFDF5E6), // <--- ADDED const HERE
           timeAndDate: '17:00 - April 24',
         ),
       ]
     },
     {
       'Yesterday': [
-        const NotificationItem( // <--- ADDED const HERE
+        NotificationItem( // <--- ADDED const HERE
           title: 'Transactions',
           description: 'A new transaction has been registered',
           subDescription: 'Groceries | Pantry',
           amount: '- ₹100.00',
           icon: Icons.attach_money_rounded,
-          iconBackgroundColor: const Color(0xFFE3F0FF), // <--- ADDED const HERE
-          iconColor: const Color(0xFF3B82F6), // <--- ADDED const HERE
+          iconBackgroundColor: Color(0xFFE3F0FF), // <--- ADDED const HERE
+          iconColor: Color(0xFF3B82F6), // <--- ADDED const HERE
           timeAndDate: '17:00 - April 24',
         ),
-        const NotificationItem( // <--- ADDED const HERE
+        NotificationItem( // <--- ADDED const HERE
           title: 'Reminder!',
           description: 'Set up your automatic savings to meet your savings goal...',
           icon: Icons.notifications_none_rounded,
-          iconBackgroundColor: const Color(0xFFF3EDF9), // <--- ADDED const HERE
+          iconBackgroundColor: Color(0xFFF3EDF9), // <--- ADDED const HERE
           timeAndDate: '17:00 - April 24',
         ),
       ]
     },
     {
       'This Weekend': [
-        const NotificationItem( // <--- ADDED const HERE
+        NotificationItem( // <--- ADDED const HERE
           title: 'Expense Record',
           description: 'We recommend that you be more attentive to your finances.',
           icon: Icons.arrow_downward_rounded,
-          iconBackgroundColor: const Color(0xFFF7E6ED), // <--- ADDED const HERE
+          iconBackgroundColor: Color(0xFFF7E6ED), // <--- ADDED const HERE
           timeAndDate: '17:00 - April 24',
         ),
-        const NotificationItem( // <--- ADDED const HERE
+        NotificationItem( // <--- ADDED const HERE
           title: 'Transactions',
           description: 'A new transaction has been registered',
           subDescription: 'Food | Dinner',
           amount: '- ₹70.40',
           icon: Icons.attach_money_rounded,
-          iconBackgroundColor: const Color(0xFFE3F0FF), // <--- ADDED const HERE
-          iconColor: const Color(0xFF3B82F6), // <--- ADDED const HERE
+          iconBackgroundColor: Color(0xFFE3F0FF), // <--- ADDED const HERE
+          iconColor: Color(0xFF3B82F6), // <--- ADDED const HERE
           timeAndDate: '17:00 - April 23',
         ),
       ]
@@ -248,7 +248,7 @@ class NotificationPage extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 );
               },

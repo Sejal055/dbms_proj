@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+package = "com.example.dbms_pro">
     <application
         android:label="dbms_pro"
         android:name="${applicationName}"

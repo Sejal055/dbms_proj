@@ -8,6 +8,8 @@ class WelcomeDetailsPage extends StatelessWidget {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController budgetController = TextEditingController();
 
+  WelcomeDetailsPage({super.key});
+
   Future<void> _saveDetailsAndNavigate(BuildContext context) async {
     try {
       final user = FirebaseAuth.instance.currentUser;

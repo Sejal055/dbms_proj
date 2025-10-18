@@ -12,7 +12,7 @@ void main() async {
 }
 
 class BudgetBuddyApp extends StatelessWidget {
-  const BudgetBuddyApp({Key? key}) : super(key: key);
+  const BudgetBuddyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

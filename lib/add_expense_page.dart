@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'services/low_budget_notification.dart';
 
 class AddExpensePopup extends StatefulWidget {
   final VoidCallback onCancel;
 
-  const AddExpensePopup({required this.onCancel, Key? key}) : super(key: key);
+  const AddExpensePopup({required this.onCancel, super.key});
 
   @override
   State<AddExpensePopup> createState() => _AddExpensePopupState();
@@ -69,9 +70,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a category')));
       return;
     }
 
@@ -81,9 +82,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Not logged in')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Not logged in')));
       setState(() {
         _isSaving = false;
       });
@@ -94,7 +95,6 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     final amount = double.tryParse(amountController.text.trim()) ?? 0.0;
 
     try {
-      // ✅ FIXED FIRESTORE WRITE LOGIC (keeps consistent field names)
       final expenseData = {
         'expense_name': name,
         'expense_amount': amount,
@@ -111,16 +111,36 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
           .collection('expenses')
           .add(expenseData);
 
-      // ✅ Clear inputs & close popup
+      // Add the notification check here
+      bool isLimitNear = await NotificationService().checkBudgetAndNotify();
+
+      // Close the AddExpensePopup first
+      Navigator.of(context).pop();
+
+      if (isLimitNear) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Budget Warning'),
+            content: Text('Your spending is about to exceed your monthly budget!'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Clear inputs
       nameController.clear();
       amountController.clear();
       selectedCategory = null;
-
-      Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save expense: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save expense: $e')));
     } finally {
       setState(() {
         _isSaving = false;
@@ -147,145 +167,145 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
           children: [
             Form(
               key: _formKey,
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: Icon(Icons.close, color: Colors.grey[700]),
-                    onPressed: widget.onCancel,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Expense'),
-                      selected: !isIncome,
-                      onSelected: (_) => setState(() => isIncome = false),
-                      selectedColor: const Color(0xFFD6A8F8),
-                      labelStyle: TextStyle(
-                          color: !isIncome ? Colors.white : Colors.black),
-                      backgroundColor: Colors.white,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: Icon(Icons.close, color: Colors.grey[700]),
+                      onPressed: widget.onCancel,
                     ),
-                    const SizedBox(width: 16),
-                    ChoiceChip(
-                      label: const Text('Income'),
-                      selected: isIncome,
-                      onSelected: (_) => setState(() => isIncome = true),
-                      selectedColor: const Color(0xFFA3CEEB),
-                      labelStyle: TextStyle(
-                          color: isIncome ? Colors.white : Colors.black),
-                      backgroundColor: Colors.white,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Expense'),
+                        selected: !isIncome,
+                        onSelected: (_) => setState(() => isIncome = false),
+                        selectedColor: const Color(0xFFD6A8F8),
+                        labelStyle: TextStyle(
+                          color: !isIncome ? Colors.white : Colors.black,
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                      const SizedBox(width: 16),
+                      ChoiceChip(
+                        label: const Text('Income'),
+                        selected: isIncome,
+                        onSelected: (_) => setState(() => isIncome = true),
+                        selectedColor: const Color(0xFFA3CEEB),
+                        labelStyle: TextStyle(
+                          color: isIncome ? Colors.white : Colors.black,
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: nameController,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter name' : null,
+                    decoration: InputDecoration(
+                      labelText: 'Expense Name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.drive_file_rename_outline),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: nameController,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Enter name' : null,
-                  decoration: InputDecoration(
-                    labelText: 'Expense Name',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                    prefixIcon: const Icon(Icons.drive_file_rename_outline),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: amountController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Enter amount';
-                    if (double.tryParse(v.trim()) == null)
-                      return 'Enter valid number';
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Enter amount';
+                      if (double.tryParse(v.trim()) == null) {
+                        return 'Enter valid number';
+                      }
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Amount',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                    prefixIcon: const Icon(Icons.currency_rupee),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.currency_rupee),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                isLoadingCategories
-                    ? const Center(child: CircularProgressIndicator())
-                    : DropdownButtonFormField<String>(
-                        value: selectedCategory,
-                        onChanged: (v) => setState(() => selectedCategory = v),
-                        items: allCategories
-                            .map((cat) => DropdownMenuItem(
-                                  value: cat,
-                                  child: Text(cat),
-                                ))
-                            .toList(),
-                        decoration: InputDecoration(
-                          labelText: 'Category',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
+                  const SizedBox(height: 16),
+                  isLoadingCategories
+                      ? const Center(child: CircularProgressIndicator())
+                      : DropdownButtonFormField<String>(
+                          initialValue: selectedCategory,
+                          onChanged: (v) => setState(() => selectedCategory = v),
+                          items: allCategories
+                              .map((cat) => DropdownMenuItem(
+                                    value: cat,
+                                    child: Text(cat),
+                                  ))
+                              .toList(),
+                          decoration: InputDecoration(
+                            labelText: 'Category',
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                          validator: (v) => (v == null) ? 'Select a category' : null,
                         ),
-                        validator: (v) =>
-                            (v == null) ? 'Select a category' : null,
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: EdgeInsets.zero,
                       ),
-
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF7BAFFC), Color(0xFFD6A8F8)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7BAFFC), Color(0xFFD6A8F8)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: _isSaving
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
-                            : const Text(
-                                'Save Expense',
-                                style: TextStyle(
+                        child: Center(
+                          child: _isSaving
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  'Save Expense',
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
-                                    color: Colors.white),
-                              ),
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ]),
-            )
+                ],
+              ),
+            ),
           ],
         ),
       ),

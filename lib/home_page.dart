@@ -11,6 +11,8 @@ import 'chat/chat_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart'; // ✅ Added import
 
+List<Map<String, dynamic>> notifications = []; //low budget notifications
+
 final urgentPayments = [
   {'title': 'Library Fine', 'due': 'Due in 2 days', 'amount': '₹250', 'status': 'Overdue'},
   {'title': 'Mess Fee', 'due': 'Due in 5 days', 'amount': '₹3100', 'status': 'Upcoming'},
@@ -41,6 +43,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadUserName();
     _loadTotals();
+    _loadNotifications();  
   }
 
   Future<void> _loadUserName() async {
@@ -54,6 +57,23 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+
+//For loading notifications
+  Future<void> _loadNotifications() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  final snapshot = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('notifications')
+      .orderBy('timestamp', descending: true)
+      .get();
+
+  setState(() {
+    notifications = snapshot.docs.map((doc) => doc.data()).toList();
+  });
+}
 
   // ✅ Fetch all transactions and calculate totals
   Future<void> _loadTotals() async {
@@ -260,10 +280,10 @@ class _HomePageState extends State<HomePage> {
                             MaterialPageRoute(builder: (context) => const CategoriesPage()),
                           );
                         },
-                        child: const Text('View All'),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF7BAFFC),
                         ),
+                        child: const Text('View All'),
                       ),
                     ],
                   ),
