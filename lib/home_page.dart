@@ -9,7 +9,8 @@ import 'stats_page.dart' as stats;
 import 'notification_page.dart';
 import 'chat/chat_page.dart';
 import 'category_page.dart';
-import 'category_detail_page.dart'; // ✅ Added import
+import 'category_detail_page.dart';
+import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
 
 List<Map<String, dynamic>> notifications = []; //low budget notifications
 
@@ -297,7 +298,6 @@ class _HomePageState extends State<HomePage> {
                     children: categories.map((cat) {
                       return GestureDetector(
                         onTap: () {
-                          // ✅ Opens Category Detail Page
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -367,9 +367,15 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+      // ✅ Floating Action Button for AI Chat
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF7BAFFC),
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AiIntroPage()), // ✅ Fixed navigation (no const)
+          );
+        },
         child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
       ),
       bottomNavigationBar: BottomAppBar(
