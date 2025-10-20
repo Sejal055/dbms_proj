@@ -11,6 +11,8 @@ import 'chat/chat_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart';
 import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
+import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
+
 
 List<Map<String, dynamic>> notifications = []; //low budget notifications
 
@@ -267,6 +269,44 @@ class _HomePageState extends State<HomePage> {
               padding: EdgeInsets.zero,
               children: [
                 const SizedBox(height: 12),
+
+                // ✅ Quiz Card
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const QuizPage()),
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF3F1FF),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.quiz_rounded, size: 30, color: Color(0xFF7E5BEF)),
+                        SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            'Take the Budgeting Quiz!',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 18, color: Colors.black54),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
                 // ✅ Categories Header with View All button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22),
