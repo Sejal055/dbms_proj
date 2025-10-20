@@ -66,7 +66,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: const Color(0x0D000000),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -178,7 +178,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: secondaryColor.withOpacity(0.1),
+      backgroundColor: const Color(0x1AD6A8FF),
       body: Stack(
         children: [
           // Top header background
@@ -186,7 +186,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             height: 180,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [primaryColor.withOpacity(0.9), secondaryColor.withOpacity(0.9)],
+                colors: [const Color(0xE67BAFFC), const Color(0xE6D6A8FF)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -321,7 +321,7 @@ class ChatTile extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: primaryColor.withOpacity(0.1),
+              backgroundColor: const Color(0x1A7BAFFC),
               backgroundImage: NetworkImage(
                   dummyUsers[data.userId] ?? dummyUsers['zoey_dev']!),
             ),

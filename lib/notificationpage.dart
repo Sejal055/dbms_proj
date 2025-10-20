@@ -167,7 +167,7 @@ class NotificationPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.08),
+                              color: Color.fromARGB(20, 158, 158, 158),
                               spreadRadius: 1,
                               blurRadius: 5,
                               offset: const Offset(0, 3),

@@ -18,9 +18,13 @@ class _ProfilePageState extends State<ProfilePage> {
   double monthlyBudget = 0;
   double accountBalance = 0;
   bool _isEditing = false;
+  bool _isEditingBudget = false;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _accountBalanceController = TextEditingController();
+  final TextEditingController _monthlyBudgetController = TextEditingController();
+
   File? _profileImage;
 
   @override
@@ -40,8 +44,11 @@ class _ProfilePageState extends State<ProfilePage> {
           userEmail = data['email'] ?? '';
           monthlyBudget = (data['monthly_budget'] ?? 0).toDouble();
           accountBalance = (data['amount_in_account'] ?? 0).toDouble();
+
           _nameController.text = userName;
           _emailController.text = userEmail;
+          _accountBalanceController.text = accountBalance.toStringAsFixed(2);
+          _monthlyBudgetController.text = monthlyBudget.toStringAsFixed(2);
         });
       }
     }
@@ -65,6 +72,144 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _saveBudget() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      double? newAccountBalance = double.tryParse(_accountBalanceController.text.trim());
+      double? newMonthlyBudget = double.tryParse(_monthlyBudgetController.text.trim());
+      if (newAccountBalance == null || newMonthlyBudget == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter valid numbers.")),
+        );
+        return;
+      }
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'amount_in_account': newAccountBalance,
+        'monthly_budget': newMonthlyBudget,
+      });
+      setState(() {
+        accountBalance = newAccountBalance;
+        monthlyBudget = newMonthlyBudget;
+        _isEditingBudget = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account & Budget updated successfully!")),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+  final confirmation = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("Delete Account"),
+      content: const Text(
+          "Are you sure you want to permanently delete your account? This action cannot be undone."),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete")),
+      ],
+    ),
+  );
+
+    if (confirmation == true) {
+      _deleteAccount();
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      // Try deleting directly
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+      await user.delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account deleted successfully.")),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LogInPage()),
+      );
+    }
+  } on FirebaseAuthException catch (e) {
+    if (e.code == 'requires-recent-login') {
+      // Need re-authentication
+      final user = FirebaseAuth.instance.currentUser!;
+      final email = user.email!;
+
+      String? password = await _showPasswordDialog(); // ask user again
+      if (password != null && password.isNotEmpty) {
+        try {
+          AuthCredential credential =
+              EmailAuthProvider.credential(email: email, password: password);
+
+          // Reauthenticate
+          await user.reauthenticateWithCredential(credential);
+
+          // Delete Firestore doc and account again
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+          await user.delete();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Account deleted successfully.")),
+          );
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LogInPage()),
+          );
+        } catch (err) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Re-authentication failed: $err")),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error: ${e.message}")));
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
+  }
+}
+
+Future<String?> _showPasswordDialog() async {
+  final controller = TextEditingController();
+  return await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("Re-enter your password"),
+      content: TextField(
+        controller: controller,
+        obscureText: true,
+        decoration: const InputDecoration(hintText: "Password"),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, null), child: const Text("Cancel")),
+        TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Confirm")),
+      ],
+    ),
+  );
+}
+
+/*This is for sign in with google*/
+
+// final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+// final GoogleSignInAuthentication googleAuth = await googleUser!.authentication;
+// final credential = GoogleAuthProvider.credential(
+//   accessToken: googleAuth.accessToken,
+//   idToken: googleAuth.idToken,
+// );
+// await FirebaseAuth.instance.currentUser?.reauthenticateWithCredential(credential);
+// await FirebaseAuth.instance.currentUser?.delete();
+
+
+
   Future<void> _pickImage() async {
     if (!_isEditing) return; // ✅ Allow picking image only in edit mode
     final ImagePicker picker = ImagePicker();
@@ -77,230 +222,238 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFE3F0FF),
-        foregroundColor: Colors.black,
-        elevation: 0,
-        title: const Text(
-          "Profile",
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    appBar: AppBar(
+      centerTitle: true,
+      title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.w700)),
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      elevation: 1,
+    ),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 🔹 Profile Info Section
+            // Gradient Profile Header
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE3F0FF), Color(0xFFF8EFFB)],
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer,
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Row(
                 children: [
-                  Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundColor: const Color(0xFF86E3CE),
-                          child: CircleAvatar(
-                            radius: 38,
-                            backgroundColor: Colors.white,
-                            backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                            child: _profileImage == null
-                                ? Text(
-                                    userName.isNotEmpty ? userName[0] : '',
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // CircleAvatar(
+                  //   radius: 40,
+                  //   backgroundImage: _profileImage != null
+                  //       ? FileImage(_profileImage!)
+                  //       : null,
+                  //   backgroundColor: Theme.of(context).colorScheme.primary,
+                  //   child: _profileImage == null
+                  //       ? Text(
+                  //           userName.isNotEmpty ? userName[0] : '',
+                  //           style: const TextStyle(
+                  //             fontSize: 36,
+                  //             fontWeight: FontWeight.bold,
+                  //             color: Colors.white,
+                  //           ),
+                  //         )
+                  //       : null,
+                  // ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _pickImage,
+                    child: CircleAvatar(
+                      radius: 40,
+                      backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      child: _profileImage == null
+                          ? const Icon(Icons.camera_alt, color: Colors.white, size: 35)
+                          : null,
+                    ),
                   ),
-                  const SizedBox(width: 16),
+
+                  const SizedBox(width: 20),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextFormField(
-                          controller: _nameController,
-                          enabled: _isEditing,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          decoration: const InputDecoration(border: InputBorder.none),
-                        ),
+                        Text(userName,
+                            style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 4),
-                        TextFormField(
-                          controller: _emailController,
-                          enabled: _isEditing,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
-                          ),
-                          decoration: const InputDecoration(border: InputBorder.none),
-                        ),
+                        Text(userEmail,
+                            style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),
                   ),
-                  // 🔹 Single Edit Icon for all (name, email, image)
-                  IconButton(
-                    icon: Icon(_isEditing ? Icons.save : Icons.edit, color: Colors.black54),
-                    onPressed: () {
-                      if (_isEditing) {
-                        _saveProfile();
-                      } else {
-                        setState(() {
-                          _isEditing = true;
-                        });
-                      }
-                    },
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            // 🔹 Account & Budget Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Account & Budget",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Account Balance: ₹ $accountBalance",
-                    style: const TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
-                  Text(
-                    "Monthly Budget: ₹ $monthlyBudget",
-                    style: const TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+            // Account and Budget Info Cards
+            Card(
+  elevation: 3,
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  child: Padding(
+    padding: const EdgeInsets.all(20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Financial Overview",
+            style: Theme.of(context).textTheme.titleMedium),
+        const Divider(),
 
-            // 🔹 Activity Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE3F0FF), Color(0xFFF8EFFB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        // Editable Account Balance
+        Row(
+          children: [
+            const Icon(Icons.account_balance_wallet_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _accountBalanceController,
+                enabled: _isEditingBudget,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: "Account Balance (₹)",
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
                 ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Activity",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'All your expenses and actions will appear here.',
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                ],
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
             ),
+            IconButton(
+              icon: Icon(
+                _isEditingBudget ? Icons.save : Icons.edit,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              onPressed: () {
+                if (_isEditingBudget) {
+                  _saveBudget();
+                } else {
+                  setState(() {
+                    _isEditingBudget = true;
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Editable Monthly Budget
+        Row(
+          children: [
+            const Icon(Icons.pie_chart_outline_rounded),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _monthlyBudgetController,
+                enabled: _isEditingBudget,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: "Monthly Budget (₹)",
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                ),
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                _isEditingBudget ? Icons.save : Icons.edit,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              onPressed: () {
+                if (_isEditingBudget) {
+                  _saveBudget();
+                } else {
+                  setState(() {
+                    _isEditingBudget = true;
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+),
+
             const SizedBox(height: 20),
 
-            // 🔹 Feedback Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE3F0FF), Color(0xFFF8EFFB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
+            // Feedback & Support
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Feedback",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildListItem(
-                    icon: Icons.star_border,
-                    title: "Rate BudgetBuddy",
+                  ListTile(
+                    leading: const Icon(Icons.star_rate_outlined),
+                    title: const Text("Rate BudgetBuddy"),
                     onTap: () {},
                   ),
-                  _buildListItem(
-                    icon: Icons.help_outline,
-                    title: "Contact BudgetBuddy support",
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.support_agent_outlined),
+                    title: const Text("Contact Support"),
                     onTap: () {},
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                    title: const Text(
+                      "Delete Account",
+                      style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                    ),
+                    onTap: _confirmDeleteAccount,
                   ),
                 ],
               ),
             ),
 
-            const Spacer(),
+            const SizedBox(height: 20),
 
-            // 🔹 Logout Button
+            
+
+            // Logout button
             Center(
               child: TextButton.icon(
-                icon: Icon(Icons.logout, color: Colors.red.shade400),
-                label: const Text(
-                  "Log out",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red),
-                ),
                 onPressed: () async {
                   await FirebaseAuth.instance.signOut();
-                  // ✅ Redirect to SignIn page after logout
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const LogInPage()),
+                    MaterialPageRoute(builder: (_) => const LogInPage()),
                   );
                 },
+                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                label: const Text("Log out",
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: Colors.redAccent)),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildListItem({
     required IconData icon,

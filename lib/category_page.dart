@@ -71,7 +71,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         .add({
       'name': name,
       'icon_code_point': icon.codePoint,
-      'color': color.value,
+      'color': color.toARGB32(),
     });
   }
 
@@ -330,16 +330,17 @@ class _CategoriesPageState extends State<CategoriesPage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.6),
+          color: color.withAlpha((0.6 * 255).round()), // 0.6 opacity
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withAlpha((0.3 * 255).round()), // 0.3 opacity
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],
         ),
+
         child: Row(
           children: [
             const SizedBox(width: 10),

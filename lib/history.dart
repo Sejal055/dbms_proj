@@ -73,7 +73,7 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [primaryBlue.withOpacity(0.9), accentPurple.withOpacity(0.8)],
+          colors: [primaryBlue.withAlpha(230), accentPurple.withAlpha(204)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -131,7 +131,7 @@ class _HistoryPageState extends State<HistoryPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2),
+            color: color.withAlpha(51), // 0.2 * 255 ≈ 51
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -196,7 +196,7 @@ class _HistoryPageState extends State<HistoryPage> {
               ],
             ),
           ),
-          Container(height: 40, width: 1, color: Colors.white.withOpacity(0.5)),
+          Container(height: 40, width: 1, color: const Color.fromARGB(128, 255, 255, 255)),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -244,7 +244,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
                     value: usedPercentage,
-                    backgroundColor: Colors.white.withOpacity(0.3),
+                    backgroundColor: const Color.fromARGB(77, 255, 255, 255),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                     minHeight: 10,
                   ),

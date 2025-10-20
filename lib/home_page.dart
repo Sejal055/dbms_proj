@@ -172,7 +172,7 @@ class _HomePageState extends State<HomePage> {
                       },
                       child: const CircleAvatar(
                         radius: 20,
-                        backgroundImage: NetworkImage("https://i.pravatar.cc/60"),
+                        backgroundColor: Colors.purple,
                       ),
                     ),
                   ],
@@ -411,7 +411,7 @@ class _HomePageState extends State<HomePage> {
                   color: const Color(0xFFB8A5FF),
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFFB8A5FF).withOpacity(0.22), blurRadius: 8),
+                    BoxShadow(color: Color.fromARGB(56, 184, 165, 255), blurRadius: 8,),
                   ],
                 ),
                 child: IconButton(

@@ -83,7 +83,7 @@ class _AiIntroPageState extends State<AiIntroPage>
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Color.fromARGB(26, 0, 0, 0),
                         blurRadius: 12,
                         offset: const Offset(0, 5),
                       ),
