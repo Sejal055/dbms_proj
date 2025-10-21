@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'services/notification_service.dart'; // Correct use!
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest_all.dart' as tz;
 
 Future<void> schedulePaymentReminder(String title, dynamic amount, DateTime scheduledDateTime) async {
   const androidDetails = AndroidNotificationDetails(
