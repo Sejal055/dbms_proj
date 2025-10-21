@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 package = "com.example.dbms_pro">
+<uses-permission android:name="android.permission.READ_CONTACTS" />
     <application
         android:label="dbms_pro"
         android:name="${applicationName}"
