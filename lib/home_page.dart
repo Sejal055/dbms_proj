@@ -15,6 +15,7 @@ import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
 import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
 import 'models/news_article.dart';  //for loading news
 import 'services/rss_news_services.dart';
+import 'services/recurring_payment_checker.dart';
 
 
 import 'pending_payments_page.dart';
@@ -71,6 +72,7 @@ class _HomePageState extends State<HomePage> {
     _loadTotals();
     _loadNotifications();
     _loadRssNews(); 
+    RecurringPaymentChecker.checkAndMoveRecurringPayments();
   }
 
   Future<void> _loadUserName() async {

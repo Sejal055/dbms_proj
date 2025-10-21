@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:awesome_notifications/awesome_notifications.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PendingPaymentsPage extends StatefulWidget {
-  const PendingPaymentsPage({super.key});
+  const PendingPaymentsPage({Key? key}) : super(key: key);
 
   @override
   State<PendingPaymentsPage> createState() => _PendingPaymentsPageState();
@@ -16,200 +14,192 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
   final user = FirebaseAuth.instance.currentUser;
 
   @override
-  void initState() {
-    super.initState();
-    _initNotifications();
-  }
-
-  Future<void> _initNotifications() async {
-    await AwesomeNotifications().initialize(
-      null,
-      [
-        NotificationChannel(
-          channelKey: 'payment_reminder_channel',
-          channelName: 'Payment Reminders',
-          channelDescription: 'Reminders for pending payments',
-          importance: NotificationImportance.Max,
-        ),
-      ],
-    );
-
-    bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
-    if (!isAllowed) {
-      await AwesomeNotifications().requestPermissionToSendNotifications();
-    }
-  }
-
-  Future<void> _scheduleReminder(String title, DateTime dateTime) async {
-    await AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: title.hashCode,
-        channelKey: 'payment_reminder_channel',
-        title: 'Payment Reminder',
-        body: 'Don’t forget to pay for $title 💸',
-        notificationLayout: NotificationLayout.Default,
-      ),
-      schedule: NotificationCalendar.fromDate(date: dateTime),
-    );
-  }
-
-  Future<void> _pickDateTimeAndSetReminder(
-      BuildContext context, String title) async {
-    final now = DateTime.now();
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 1),
-    );
-    if (pickedDate == null) return;
-
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (pickedTime == null) return;
-
-    final dateTime = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
-
-    if (dateTime.isBefore(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please choose a future time')),
-      );
-      return;
-    }
-
-    await _scheduleReminder(title, dateTime);
-    final formatted = DateFormat('dd MMM, hh:mm a').format(dateTime);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Reminder set for $title at $formatted')),
-    );
-  }
-
-  Future<void> _markAsPaid(
-      BuildContext context, String docId, Map<String, dynamic> paymentData) async {
-    if (user == null) return;
-
-    try {
-      // Move to history
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user!.uid)
-          .collection('history')
-          .add({
-        ...paymentData,
-        'status': 'Paid',
-        'paidOn': Timestamp.now(),
-      });
-
-      // Remove from pending
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user!.uid)
-          .collection('pending_payments')
-          .doc(docId)
-          .delete();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment marked as paid ✅')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text("Please log in to view your payments.")),
-      );
+      return const Center(child: Text('Not logged in'));
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Pending Payments")),
+      appBar: AppBar(
+        title: const Text(
+          'Pending Payments',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
             .doc(user!.uid)
             .collection('pending_payments')
+            .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No pending payments 🎉"));
+            return const Center(
+              child: Text(
+                'No pending or future payments 🎉',
+                style: TextStyle(fontSize: 16),
+              ),
+            );
           }
 
           final docs = snapshot.data!.docs;
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16),
             itemCount: docs.length,
-            itemBuilder: (context, idx) {
-              final doc = docs[idx];
-              final payment = doc.data() as Map<String, dynamic>;
+            itemBuilder: (context, index) {
+              final doc = docs[index];
+              final data = doc.data() as Map<String, dynamic>;
+
+              final title = data['title'] ?? 'Untitled';
+              final amount = data['amount'] ?? 0.0;
+              final category = data['category'] ?? 'Uncategorized';
+              final type = data['type'] ?? 'Pay';
+              final status = data['status'] ?? 'pending';
+              final createdAt = (data['created_at'] ?? '') as String;
+
+              DateTime? scheduledFor;
+              if (data['scheduled_for'] != null) {
+                scheduledFor = DateTime.tryParse(data['scheduled_for']);
+              }
 
               return Card(
-                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                child: ListTile(
-                  title: Text(payment['title'] ?? 'Unknown'),
-                  trailing: Text("₹${payment['amount']}"),
-                  isThreeLine: true,
-                  contentPadding: const EdgeInsets.all(16),
-                  subtitle: Column(
+                margin: const EdgeInsets.only(bottom: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 3,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: type == 'Pay'
+                          ? [Colors.red.shade50, Colors.red.shade100]
+                          : [Colors.green.shade50, Colors.green.shade100],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (payment['friend_name'] != null)
-                        Text("Request from: ${payment['friend_name']}"),
-                      if (payment['due'] != null) Text(payment['due']),
-                      const SizedBox(height: 8),
+                      // Title and Amount
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          ElevatedButton(
-                            onPressed: () async {
-                              final upiUrl =
-                                  "upi://pay?pa=${payment['upi_id']}&pn=${Uri.encodeComponent(payment['title'])}&am=${payment['amount']}&cu=INR";
-                              if (await canLaunchUrl(Uri.parse(upiUrl))) {
-                                await launchUrl(Uri.parse(upiUrl));
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Could not open payment app."),
-                                  ),
-                                );
-                              }
-                            },
-                            child: const Text("Pay Now"),
+                          Flexible(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          const SizedBox(width: 10),
-                          OutlinedButton(
-                            onPressed: () async {
-                              await _pickDateTimeAndSetReminder(
-                                  context, payment['title']);
-                            },
-                            child: const Text("Remind"),
+                          Text(
+                            '₹${amount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                           ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Category and Type
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            category,
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            type == 'Pay' ? 'To Pay' : 'To Receive',
+                            style: TextStyle(
+                              color: type == 'Pay'
+                                  ? Colors.redAccent
+                                  : Colors.green,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Dates
+                      if (status == 'future' && scheduledFor != null)
+                        Text(
+                          'Scheduled for: ${scheduledFor.toLocal().toString().split(' ')[0]}',
+                          style: const TextStyle(
+                            color: Colors.deepPurple,
+                            fontSize: 13,
+                          ),
+                        )
+                      else
+                        Text(
+                          'Added on: ${createdAt.split('T')[0]}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                          ),
+                        ),
+
+                      const SizedBox(height: 12),
+
+                      // Buttons Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Pay Button
+                          if (type == 'Pay')
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                await _openUpiPayment(title, amount);
+                              },
+                              icon: const Icon(Icons.account_balance_wallet),
+                              label: const Text('Pay'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+
+                          // Mark as Paid Button
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await _markAsPaid(doc.id, data);
+                            },
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: const Text('Mark as Paid'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
                             ),
-                            onPressed: () async {
-                              await _markAsPaid(context, doc.id, payment);
-                            },
-                            child: const Text("Mark as Paid"),
                           ),
                         ],
                       ),
@@ -222,5 +212,50 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
         },
       ),
     );
+  }
+
+  /// 🔹 Function to open external UPI app without needing stored UPI ID
+  Future<void> _openUpiPayment(String title, num amount) async {
+    final upiUrl =
+        'upi://pay?pa=someone@upi&pn=$title&am=$amount&cu=INR&tn=Payment for $title';
+    final uri = Uri.parse(upiUrl);
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open UPI app')),
+      );
+    }
+  }
+
+  /// 🔹 Function to move payment to History
+  Future<void> _markAsPaid(String docId, Map<String, dynamic> data) async {
+    try {
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user!.uid);
+
+      // Move to history (ensure correct timestamp)
+      await userRef.collection('history').add({
+        'title': data['title'],
+        'amount': data['amount'],
+        'category': data['category'],
+        'type': data['type'],
+        'paid_on': FieldValue.serverTimestamp(),
+      });
+
+      // Delete from pending_payments
+      await userRef.collection('pending_payments').doc(docId).delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment moved to History ✅')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving to history: $e')),
+        );
+      }
+    }
   }
 }
