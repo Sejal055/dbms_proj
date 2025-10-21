@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PendingPaymentsPage extends StatefulWidget {
   const PendingPaymentsPage({super.key});
@@ -11,22 +13,7 @@ class PendingPaymentsPage extends StatefulWidget {
 }
 
 class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
-  final List<Map<String, dynamic>> pendingPayments = [
-    {
-      'title': 'Library Fine',
-      'due': 'Due in 2 days',
-      'amount': 250,
-      'upi_id': 'library@upi',
-      'friend_name': null,
-    },
-    {
-      'title': 'Mess Fee',
-      'due': 'Due in 5 days',
-      'amount': 3100,
-      'upi_id': 'mess@upi',
-      'friend_name': null,
-    },
-  ];
+  final user = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
@@ -36,7 +23,7 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
 
   Future<void> _initNotifications() async {
     await AwesomeNotifications().initialize(
-      null, // Use app icon
+      null,
       [
         NotificationChannel(
           channelKey: 'payment_reminder_channel',
@@ -47,7 +34,6 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
       ],
     );
 
-    // Request permission if not granted
     bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
       await AwesomeNotifications().requestPermissionToSendNotifications();
@@ -108,60 +94,130 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
     );
   }
 
+  Future<void> _markAsPaid(
+      BuildContext context, String docId, Map<String, dynamic> paymentData) async {
+    if (user == null) return;
+
+    try {
+      // Move to history
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .collection('history')
+          .add({
+        ...paymentData,
+        'status': 'Paid',
+        'paidOn': Timestamp.now(),
+      });
+
+      // Remove from pending
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .collection('pending_payments')
+          .doc(docId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment marked as paid ✅')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text("Please log in to view your payments.")),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text("Pending Payments")),
-      body: ListView.builder(
-        itemCount: pendingPayments.length,
-        itemBuilder: (context, idx) {
-          final payment = pendingPayments[idx];
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            child: ListTile(
-              title: Text(payment['title']),
-              trailing: Text("₹${payment['amount']}"),
-              isThreeLine: true,
-              contentPadding: const EdgeInsets.all(16),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (payment['friend_name'] != null)
-                    Text("Request from: ${payment['friend_name']}"),
-                  Text(payment['due']),
-                  const SizedBox(height: 8),
-                  Row(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .collection('pending_payments')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No pending payments 🎉"));
+          }
+
+          final docs = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, idx) {
+              final doc = docs[idx];
+              final payment = doc.data() as Map<String, dynamic>;
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                child: ListTile(
+                  title: Text(payment['title'] ?? 'Unknown'),
+                  trailing: Text("₹${payment['amount']}"),
+                  isThreeLine: true,
+                  contentPadding: const EdgeInsets.all(16),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ElevatedButton(
-                        onPressed: () async {
-                          final upiUrl =
-                              "upi://pay?pa=${payment['upi_id']}&pn=${Uri.encodeComponent(payment['title'])}&am=${payment['amount']}&cu=INR";
-                          if (await canLaunchUrl(Uri.parse(upiUrl))) {
-                            await launchUrl(Uri.parse(upiUrl));
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text("Could not redirect to payment app."),
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text("Pay Now"),
-                      ),
-                      const SizedBox(width: 10),
-                      OutlinedButton(
-                        onPressed: () async {
-                          await _pickDateTimeAndSetReminder(
-                              context, payment['title']);
-                        },
-                        child: const Text("Remind"),
+                      if (payment['friend_name'] != null)
+                        Text("Request from: ${payment['friend_name']}"),
+                      if (payment['due'] != null) Text(payment['due']),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              final upiUrl =
+                                  "upi://pay?pa=${payment['upi_id']}&pn=${Uri.encodeComponent(payment['title'])}&am=${payment['amount']}&cu=INR";
+                              if (await canLaunchUrl(Uri.parse(upiUrl))) {
+                                await launchUrl(Uri.parse(upiUrl));
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Could not open payment app."),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text("Pay Now"),
+                          ),
+                          const SizedBox(width: 10),
+                          OutlinedButton(
+                            onPressed: () async {
+                              await _pickDateTimeAndSetReminder(
+                                  context, payment['title']);
+                            },
+                            child: const Text("Remind"),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () async {
+                              await _markAsPaid(context, doc.id, payment);
+                            },
+                            child: const Text("Mark as Paid"),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),
