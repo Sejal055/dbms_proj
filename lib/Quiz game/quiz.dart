@@ -40,7 +40,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   int? _selectedIndex;
 
   String _currentCategory = 'Budgeting';
-  List<String>  _categories = ['Budgeting', 'Saving', 'Investing'];
+  final List<String>  _categories = ['Budgeting', 'Saving', 'Investing'];
 
   // Animation controllers
   late AnimationController _fadeController;

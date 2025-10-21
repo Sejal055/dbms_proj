@@ -1,33 +1,8 @@
-// lib/pending_payments_page.dart
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'services/notification_service.dart'; // Correct use!
-import 'package:timezone/timezone.dart' as tz;
-
-Future<void> schedulePaymentReminder(String title, dynamic amount, DateTime scheduledDateTime) async {
-  const androidDetails = AndroidNotificationDetails(
-    'payment_reminder_channel', 'Payment Reminders',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
-  const notifDetails = NotificationDetails(android: androidDetails);
-
-  await flutterLocalNotificationsPlugin.zonedSchedule(
-    0,
-    'Pending Payment: $title',
-    'Amount: ₹$amount. Please complete your payment!',
-    tz.TZDateTime.from(scheduledDateTime, tz.local), // <-- correct usage
-    notifDetails,
-    androidAllowWhileIdle: true,
-    uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-  );
-}
 
 class PendingPaymentsPage extends StatelessWidget {
   const PendingPaymentsPage({super.key});
-
-  
 
   // Example static data; replace with Firestore query for real app
   final List<Map<String, dynamic>> pendingPayments = const [
@@ -92,41 +67,10 @@ class PendingPaymentsPage extends StatelessWidget {
                       OutlinedButton(
                         child: const Text("Remind"),
                         onPressed: () async {
-                          DateTime? remindDate = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now().add(Duration(days: 1)),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(Duration(days: 30)),
-                          );
-
-                          if (remindDate == null) return;
-
-                          TimeOfDay? remindTime = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay(hour: 10, minute: 0),
-                          );
-
-                          if (remindTime == null) return;
-
-                          // Combine date and time
-                          DateTime scheduledDateTime = DateTime(
-                            remindDate.year,
-                            remindDate.month,
-                            remindDate.day,
-                            remindTime.hour,
-                            remindTime.minute,
-                          );
-
-                          await schedulePaymentReminder(
-                            payment['title'],
-                            payment['amount'],
-                            scheduledDateTime,
-                          );
-
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                "Reminder scheduled for ${scheduledDateTime.toLocal()}!",
+                                "Reminder set in app for ${payment['title']}",
                               ),
                             ),
                           );
@@ -143,3 +87,4 @@ class PendingPaymentsPage extends StatelessWidget {
     );
   }
 }
+
