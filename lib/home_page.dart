@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'add_expense_page.dart';
 import 'profile_page.dart';
 import 'history.dart';
@@ -12,6 +13,9 @@ import 'category_page.dart';
 import 'category_detail_page.dart';
 import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
 import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
+import 'models/news_article.dart';  //for loading news
+import 'services/rss_news_services.dart';
+
 
 
 List<Map<String, dynamic>> notifications = []; //low budget notifications
@@ -46,7 +50,8 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadUserName();
     _loadTotals();
-    _loadNotifications();  
+    _loadNotifications();
+    _loadRssNews(); 
   }
 
   Future<void> _loadUserName() async {
@@ -58,6 +63,21 @@ class _HomePageState extends State<HomePage> {
           userName = doc.data()?['name'] ?? 'User';
         });
       }
+    }
+  }
+
+  List<NewsArticle> _rssArticles = [];
+
+  Future<void> _loadRssNews() async {
+    try {
+      final articles = await RssNewsService.fetchNews();
+      if (mounted) {
+        setState(() {
+          _rssArticles = articles.take(5).toList(); // limit to top 5
+        });
+      }
+    } catch (e) {
+      print('Error loading RSS news: $e');
     }
   }
 
@@ -181,7 +201,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 15),
                 // Finance News Section
-                Container(
+                /*Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
@@ -204,7 +224,82 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                ),
+                ),*/
+
+                if (_rssArticles.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 22),
+                    child: Text('Finance News', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _rssArticles.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final article = _rssArticles[index];
+                        return GestureDetector(
+                          onTap: () async {
+                            final uri = Uri.parse(article.link);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri);
+                            }
+                          },
+                          child: Container(
+                            width: 250,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDDF4FF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 20),
+                                const SizedBox(height: 8),
+                                Text(
+                                  article.title,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF005678)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ] else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDDF4FF),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Loading finance news...',
+                            style: TextStyle(
+                              color: Color(0xFF005678),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 const SizedBox(height: 18),
                 // ✅ Dynamic Budget Summary
                 Container(
