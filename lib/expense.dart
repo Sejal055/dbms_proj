@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class ExpensesPage extends StatelessWidget {
   final String category;
 
-  const ExpensesPage({Key? key, required this.category}) : super(key: key);
+  const ExpensesPage({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -72,12 +72,12 @@ class ExpensesPage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.97),
+                      color: Color.fromARGB(247, 255, 255, 255),
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
                           blurRadius: 12,
-                          color: Colors.black.withOpacity(0.08),
+                          color: Color.fromARGB(20, 0, 0, 0),
                           offset: Offset(0, 5),
                         ),
                       ],

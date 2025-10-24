@@ -96,7 +96,7 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.15),
+                  color: Color.fromARGB(38, 158, 158, 158),
                   spreadRadius: 1,
                   blurRadius: 6,
                   offset: const Offset(0, 3),
@@ -130,7 +130,7 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.12),
+                        color: Color.fromARGB(31, 158, 158, 158),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),

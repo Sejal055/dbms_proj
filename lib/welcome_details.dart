@@ -8,6 +8,8 @@ class WelcomeDetailsPage extends StatelessWidget {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController budgetController = TextEditingController();
 
+  WelcomeDetailsPage({super.key});
+
   Future<void> _saveDetailsAndNavigate(BuildContext context) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -82,7 +84,7 @@ class WelcomeDetailsPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Color.fromARGB(13, 0, 0, 0),
                         blurRadius: 8,
                         offset: Offset(0, 2),
                       ),
@@ -162,14 +164,6 @@ class WelcomeDetailsPage extends StatelessWidget {
                       onPressed: () => _saveDetailsAndNavigate(context),
                       child: const Text('Let\'s go!', style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Align(
-                  alignment: Alignment.bottomRight,
-                  child: Padding(
-                    padding: EdgeInsets.only(right: 12),
-                    child: Text('Made in Bot', style: TextStyle(fontSize: 11, color: Colors.black38)),
                   ),
                 ),
               ],

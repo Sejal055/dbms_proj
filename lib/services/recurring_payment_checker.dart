@@ -72,4 +72,8 @@ class RecurringPaymentChecker {
         return base;
     }
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead

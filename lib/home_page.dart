@@ -11,6 +11,7 @@ import 'notification_page.dart';
 import 'chat/chat_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart';
+<<<<<<< HEAD
 import 'ai chat bot/ai_intro_page.dart';
 import 'Quiz Game/quiz.dart';
 import 'models/news_article.dart';
@@ -24,15 +25,45 @@ import 'debts_page.dart';
 import 'planned_payments_page.dart';
 
 List<Map<String, dynamic>> notifications = [];
+=======
+import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
+import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
+import 'models/news_article.dart';  //for loading news
+import 'services/rss_news_services.dart';
+import 'services/recurring_payment_checker.dart';
+
+
+import 'pending_payments_page.dart';
+
+List<Map<String, dynamic>> notifications = []; //low budget notifications
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
 
 final urgentPayments = [
-  {'title': 'Library Fine', 'due': 'Due in 2 days', 'amount': '₹250', 'status': 'Overdue'},
-  {'title': 'Mess Fee', 'due': 'Due in 5 days', 'amount': '₹3100', 'status': 'Upcoming'},
+  {
+    'title': 'Library Fine',
+    'due': 'Due in 2 days',
+    'amount': '₹250',
+    'status': 'Overdue',
+  },
+  {
+    'title': 'Mess Fee',
+    'due': 'Due in 5 days',
+    'amount': '₹3100',
+    'status': 'Upcoming',
+  },
 ];
 
 final categories = [
-  {'title': 'Food & Dining', 'icon': Icons.restaurant, 'color': Color(0xFFFDF5E6)},
-  {'title': 'Transportation', 'icon': Icons.directions_bus, 'color': Color(0xFFEAF6FA)},
+  {
+    'title': 'Food & Dining',
+    'icon': Icons.restaurant,
+    'color': Color(0xFFFDF5E6),
+  },
+  {
+    'title': 'Transportation',
+    'icon': Icons.directions_bus,
+    'color': Color(0xFFEAF6FA),
+  },
   {'title': 'Education', 'icon': Icons.school, 'color': Color(0xFFF3EDF9)},
   {'title': 'Entertainment', 'icon': Icons.movie, 'color': Color(0xFFF7E6ED)},
 ];
@@ -56,7 +87,11 @@ class _HomePageState extends State<HomePage> {
     _loadUserName();
     _loadTotals();
     _loadNotifications();
+<<<<<<< HEAD
     _loadRssNews();
+=======
+    _loadRssNews(); 
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
     RecurringPaymentChecker.checkAndMoveRecurringPayments();
   }
 
@@ -244,11 +279,34 @@ class _HomePageState extends State<HomePage> {
                 // TOP ROW: menu icon left and icons (notifications, pending, profile) on the right (kept slightly higher)
                 Row(
                   children: [
+<<<<<<< HEAD
                     // menu icon (opens drawer)
                     Builder(
                       builder: (ctx) => IconButton(
                         icon: const Icon(Icons.menu_rounded, color: Colors.black87, size: 26),
                         onPressed: () => Scaffold.of(ctx).openDrawer(),
+=======
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Good morning, $userName! 👋',
+                            style: const TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Ready to track your expenses today?',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                       ),
                     ),
 
@@ -267,6 +325,25 @@ class _HomePageState extends State<HomePage> {
                           MaterialPageRoute(
                             builder: (context) => const NotificationPage(),
                           ),
+<<<<<<< HEAD
+=======
+                        );
+                      },
+                    ),
+                    //Pending Payments Icon
+                    IconButton(
+                      icon: const Icon(
+                        Icons.hourglass_bottom,
+                        color: Colors.orange,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PendingPaymentsPage(),
+                          ),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                         );
                       },
                     ),
@@ -300,12 +377,17 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                       child: const CircleAvatar(
+<<<<<<< HEAD
                         radius: 18,
+=======
+                        radius: 20,
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                         backgroundColor: Colors.purple,
                       ),
                     ),
                   ],
                 ),
+<<<<<<< HEAD
 
                 // Small space to create breathing room (greeting moved a bit lower)
                 const SizedBox(height: 12),
@@ -329,10 +411,41 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.black54,
+=======
+                const SizedBox(height: 15),
+                // Finance News Section
+                /*Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDF4FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(
+                        Icons.article_outlined,
+                        color: Color(0xFF0077B6),
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Finance News: RBI launches new digital currency policy to boost cashless transactions!',
+                          style: TextStyle(
+                            color: Color(0xFF005678),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                         ),
                       ),
                     ],
                   ),
+<<<<<<< HEAD
                 ),
 
                 const SizedBox(height: 12),
@@ -340,6 +453,12 @@ class _HomePageState extends State<HomePage> {
                 // Finance News Section (unchanged)
                 if (_rssArticles.isNotEmpty) ...[
                   const SizedBox(height: 6),
+=======
+                ),*/
+
+                if (_rssArticles.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 22),
                     child: Text('Finance News', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -720,7 +839,11 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) => AiIntroPage(),
+<<<<<<< HEAD
             ),
+=======
+            ), // ✅ Fixed navigation (no const)
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
           );
         },
         child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
@@ -796,7 +919,11 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
+<<<<<<< HEAD
                       builder: (context) => stats.StatisticsMainPage(),
+=======
+                      builder: (context) => stats.AnalysisScreen(),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                     ),
                   );
                 },

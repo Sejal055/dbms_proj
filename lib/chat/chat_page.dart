@@ -116,7 +116,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color.fromARGB(13, 0, 0, 0),
             blurRadius: 10,
             offset: const Offset(0, 5),
           )
@@ -169,21 +169,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
               .name
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()))
-          .toList() as List<T>;
+          .toList();
     } else if (T == GroupData) {
       return data
           .where((item) => (item as GroupData)
               .name
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()))
-          .toList() as List<T>;
+          .toList();
     } else if (T == Settlement) {
       return data
           .where((item) => (item as Settlement)
               .personName
               .toLowerCase()
               .contains(_searchQuery.toLowerCase()))
-          .toList() as List<T>;
+          .toList();
     }
     return data;
   }
@@ -259,7 +259,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             leading: CircleAvatar(
               radius: 28,
-              backgroundColor: primaryColor.withOpacity(0.1),
+              backgroundColor: Color.fromARGB(25, 123, 175, 252),
               backgroundImage: NetworkImage(filtered[index].imageUrl),
             ),
             title: _highlightText(filtered[index].personName, _searchQuery),
@@ -419,14 +419,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: secondaryColor.withOpacity(0.1),
+      backgroundColor: Color.fromARGB(25, 214, 168, 255),
       body: Stack(
         children: [
           Container(
             height: 180,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [primaryColor.withOpacity(0.9), secondaryColor],
+                colors: [Color.fromARGB(230, 123, 175, 252), secondaryColor],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

@@ -316,7 +316,7 @@ class _OutlookPageState extends State<OutlookPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withOpacity(0.3),
+            color: Color.fromARGB(77, 208, 227, 255), // primaryColor with 30% opacity
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -328,7 +328,7 @@ class _OutlookPageState extends State<OutlookPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildMetric('Total Balance', totalBalance, true, Icons.account_balance_wallet_outlined, incomeColor),
-              Container(width: 1, height: 50, color: Colors.grey.withOpacity(0.5)),
+              Container(width: 1, height: 50, color: Color.fromARGB(128, 158, 158, 158)),
               _buildMetric('Total Expense', totalExpense, false, Icons.remove_circle_outline, expenseColor),
             ],
           ),
@@ -504,7 +504,9 @@ class _OutlookPageState extends State<OutlookPage> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15), borderRadius: BorderRadius.circular(15)),
+            color: iconColor.withAlpha(38), borderRadius: BorderRadius.circular(15),
+          ),
+          
           child: Icon(icon, color: iconColor, size: 24),
         ),
         const SizedBox(height: 8),

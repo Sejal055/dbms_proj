@@ -7,8 +7,7 @@ import 'package:intl/intl.dart';
 class CategoryDetailPage extends StatefulWidget {
   final String category;
 
-  const CategoryDetailPage({Key? key, required this.category})
-      : super(key: key);
+  const CategoryDetailPage({super.key, required this.category});
 
   @override
   State<CategoryDetailPage> createState() => _CategoryDetailPageState();
@@ -95,7 +94,7 @@ class _CategoryDetailPageState extends State<CategoryDetailPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Color.fromARGB(230, 255, 255, 255),
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(
@@ -250,7 +249,7 @@ class _CategoryDetailPageState extends State<CategoryDetailPage> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Color.fromARGB(230, 255, 255, 255),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
