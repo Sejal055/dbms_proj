@@ -10,6 +10,21 @@ import 'notification_page.dart';
 import 'chat/chat_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart';
+<<<<<<< HEAD
+import 'ai chat bot/ai_intro_page.dart';
+import 'Quiz Game/quiz.dart';
+import 'models/news_article.dart';
+import 'services/rss_news_services.dart';
+import 'services/recurring_payment_checker.dart';
+
+import 'pending_payments_page.dart';
+import 'budget_page.dart';
+import 'goal_page.dart';
+import 'debts_page.dart';
+import 'planned_payments_page.dart';
+
+List<Map<String, dynamic>> notifications = [];
+=======
 import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
 import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
 import 'models/news_article.dart'; //for loading news
@@ -19,6 +34,7 @@ import 'services/recurring_payment_checker.dart';
 import 'pending_payments_page.dart';
 
 List<Map<String, dynamic>> notifications = []; //low budget notifications
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
 
 final urgentPayments = [
   {
@@ -69,7 +85,11 @@ class _HomePageState extends State<HomePage> {
     _loadUserName();
     _loadTotals();
     _loadNotifications();
+<<<<<<< HEAD
     _loadRssNews();
+=======
+    _loadRssNews(); 
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
     RecurringPaymentChecker.checkAndMoveRecurringPayments();
   }
 
@@ -138,11 +158,13 @@ class _HomePageState extends State<HomePage> {
       fetchedBudget = (userDoc.data()?['monthly_budget'] ?? 0).toDouble();
     }
 
-    final snapshot = await FirebaseFirestore.instance
+    final userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('expenses')
         .get();
+
+    double income = 0;
+    double expense = 0;
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
@@ -165,18 +187,96 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // --- Drawer widget used by the scaffold
+  Drawer _buildSideDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF7BAFFC), Color(0xFFD6A8FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  'Budget Buddy',
+                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home_rounded, color: Color(0xFF7BAFFC)),
+              title: const Text('Home', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                // stay on home
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF7BAFFC)),
+              title: const Text('Budget', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BudgetPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.flag_rounded, color: Color(0xFF7BAFFC)),
+              title: const Text('Goals', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.money_off_rounded, color: Color(0xFF7BAFFC)),
+              title: const Text('Debts', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const DebtsPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.schedule_rounded, color: Color(0xFF7BAFFC)),
+              title: const Text('Planned Payments', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PlannedPaymentsPage()));
+              },
+            ),
+            const Spacer(),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Close'),
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    double amountLeft = totalIncome - totalExpense;
-    double usedPercent = (totalExpense / monthlyBudget).clamp(0.0, 1.0);
+    double amountLeft = (monthlyBudget + totalIncome - totalExpense);
+    double usedPercent = monthlyBudget == 0 ? 0.0 : ((monthlyBudget - amountLeft) / monthlyBudget).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      drawer: _buildSideDrawer(), // <-- persistent side drawer
       body: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [Color(0xFFE3F0FF), Color(0xFFF8EFFB)],
@@ -187,9 +287,16 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Row (Name + Profile + Notification)
+                // TOP ROW: menu icon left and icons (notifications, pending, profile) on the right (kept slightly higher)
                 Row(
                   children: [
+<<<<<<< HEAD
+                    // menu icon (opens drawer)
+                    Builder(
+                      builder: (ctx) => IconButton(
+                        icon: const Icon(Icons.menu_rounded, color: Colors.black87, size: 26),
+                        onPressed: () => Scaffold.of(ctx).openDrawer(),
+=======
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,9 +317,13 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ],
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                       ),
                     ),
-                    // Notification Icon
+
+                    const Spacer(),
+
+                    // notification icon
                     IconButton(
                       icon: const Icon(
                         Icons.notifications_none_rounded,
@@ -225,6 +336,8 @@ class _HomePageState extends State<HomePage> {
                           MaterialPageRoute(
                             builder: (context) => const NotificationPage(),
                           ),
+<<<<<<< HEAD
+=======
                         );
                       },
                     ),
@@ -241,11 +354,31 @@ class _HomePageState extends State<HomePage> {
                           MaterialPageRoute(
                             builder: (context) => const PendingPaymentsPage(),
                           ),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                         );
                       },
                     ),
-                    const SizedBox(width: 5),
-                    // Profile Avatar
+
+                    // pending payments icon
+                    IconButton(
+                      icon: const Icon(
+                        Icons.hourglass_bottom,
+                        color: Colors.orange,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PendingPaymentsPage(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    // profile avatar
                     GestureDetector(
                       onTap: () {
                         Navigator.of(context).push(
@@ -255,12 +388,41 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                       child: const CircleAvatar(
+<<<<<<< HEAD
+                        radius: 18,
+=======
                         radius: 20,
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                         backgroundColor: Colors.purple,
                       ),
                     ),
                   ],
                 ),
+<<<<<<< HEAD
+
+                // Small space to create breathing room (greeting moved a bit lower)
+                const SizedBox(height: 12),
+
+                // GREETING (moved lower to reduce congestion)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 4, bottom: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hello, $userName! 👋', // changed as requested
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Ready to track your expenses today?',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+=======
                 const SizedBox(height: 15),
 
                 // Finance News Section
@@ -290,13 +452,24 @@ class _HomePageState extends State<HomePage> {
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                         ),
                       ),
                     ],
                   ),
+<<<<<<< HEAD
+                ),
+
+                const SizedBox(height: 12),
+
+                // Finance News Section (unchanged)
+                if (_rssArticles.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+=======
                 ),*/
                 if (_rssArticles.isNotEmpty) ...[
                   const SizedBox(height: 18),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 22),
                     child: Text(
@@ -391,7 +564,8 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                 const SizedBox(height: 18),
-                // ✅ Fixed Budget Summary Section (keeps your original design)
+
+                // ✅ Dynamic Budget Summary (unchanged logic)
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -451,42 +625,20 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 10),
-
-                      // === PROGRESS BAR ===
-                      Builder(
-                        builder: (context) {
-                          final safeBudget = monthlyBudget > 0
-                              ? monthlyBudget
-                              : 1; // avoid div by 0
-                          final remainingPercent =
-                              ((monthlyBudget - totalExpense) / safeBudget)
-                                  .clamp(0.0, 1.0);
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              LinearProgressIndicator(
-                                value: remainingPercent,
-                                minHeight: 8,
-                                backgroundColor: const Color(0xFFE5E7EB),
-                                color: const Color(0xFF7BAFFC),
-                                borderRadius: BorderRadius.circular(
-                                  6,
-                                ), // ✅ keep your rounded style
-                              ),
-                              const SizedBox(height: 3),
-
-                              // ✅ Show "₹ spent" instead of percent
-                              Text(
-                                "₹${totalExpense.toStringAsFixed(0)} spent",
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      LinearProgressIndicator(
+                        value: usedPercent,
+                        minHeight: 8,
+                        backgroundColor: const Color(0xFFE5E7EB),
+                        color: const Color(0xFF7BAFFC),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        "${(usedPercent * 100).toStringAsFixed(1)}% of budget used",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
                     ],
                   ),
@@ -721,7 +873,11 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) => AiIntroPage(),
+<<<<<<< HEAD
+            ),
+=======
             ), // ✅ Fixed navigation (no const)
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
           );
         },
         child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
@@ -797,7 +953,11 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
+<<<<<<< HEAD
+                      builder: (context) => stats.StatisticsMainPage(),
+=======
                       builder: (context) => stats.AnalysisScreen(),
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
                     ),
                   );
                 },

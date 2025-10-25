@@ -704,6 +704,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+<<<<<<< HEAD
+=======
   permission_handler:
     dependency: "direct main"
     description:
@@ -752,6 +754,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.1"
+>>>>>>> 79d51950ef715099ca6c29be20cc9f7fdb9a2ead
   petitparser:
     dependency: transitive
     description:
