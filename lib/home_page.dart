@@ -1,4 +1,3 @@
-// lib/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,10 +12,9 @@ import 'category_page.dart';
 import 'category_detail_page.dart';
 import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
 import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
-import 'models/news_article.dart';  //for loading news
+import 'models/news_article.dart'; //for loading news
 import 'services/rss_news_services.dart';
 import 'services/recurring_payment_checker.dart';
-
 
 import 'pending_payments_page.dart';
 
@@ -71,7 +69,7 @@ class _HomePageState extends State<HomePage> {
     _loadUserName();
     _loadTotals();
     _loadNotifications();
-    _loadRssNews(); 
+    _loadRssNews();
     RecurringPaymentChecker.checkAndMoveRecurringPayments();
   }
 
@@ -127,14 +125,24 @@ class _HomePageState extends State<HomePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    double income = 0;
+    double expense = 0;
+    double fetchedBudget = 0;
+
+    if (userDoc.exists) {
+      fetchedBudget = (userDoc.data()?['monthly_budget'] ?? 0).toDouble();
+    }
+
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .collection('expenses')
         .get();
-
-    double income = 0;
-    double expense = 0;
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
@@ -152,6 +160,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         totalIncome = income;
         totalExpense = expense;
+        monthlyBudget = fetchedBudget;
       });
     }
   }
@@ -253,6 +262,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 const SizedBox(height: 15),
+
                 // Finance News Section
                 /*Container(
                   width: double.infinity,
@@ -285,12 +295,17 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),*/
-
                 if (_rssArticles.isNotEmpty) ...[
                   const SizedBox(height: 18),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 22),
-                    child: Text('Finance News', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    child: Text(
+                      'Finance News',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
@@ -319,13 +334,21 @@ class _HomePageState extends State<HomePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 20),
+                                const Icon(
+                                  Icons.article_outlined,
+                                  color: Color(0xFF0077B6),
+                                  size: 20,
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
                                   article.title,
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF005678)),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF005678),
+                                  ),
                                 ),
                               ],
                             ),
@@ -337,14 +360,21 @@ class _HomePageState extends State<HomePage> {
                 ] else
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFDDF4FF),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: const [
-                        Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 18),
+                        Icon(
+                          Icons.article_outlined,
+                          color: Color(0xFF0077B6),
+                          size: 18,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -361,7 +391,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                 const SizedBox(height: 18),
-                // ✅ Dynamic Budget Summary
+                // ✅ Fixed Budget Summary Section (keeps your original design)
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -396,11 +426,13 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 5),
+
+                      // === AMOUNTS ===
                       Row(
                         children: [
                           Expanded(
                             child: Text(
-                              "₹${amountLeft.toStringAsFixed(0)}",
+                              "₹${(monthlyBudget - totalExpense).toStringAsFixed(0)}", // ✅ fixed logic
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
@@ -419,20 +451,42 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      LinearProgressIndicator(
-                        value: usedPercent,
-                        minHeight: 8,
-                        backgroundColor: const Color(0xFFE5E7EB),
-                        color: const Color(0xFF7BAFFC),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        "${(usedPercent * 100).toStringAsFixed(1)}% of budget used",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+
+                      // === PROGRESS BAR ===
+                      Builder(
+                        builder: (context) {
+                          final safeBudget = monthlyBudget > 0
+                              ? monthlyBudget
+                              : 1; // avoid div by 0
+                          final remainingPercent =
+                              ((monthlyBudget - totalExpense) / safeBudget)
+                                  .clamp(0.0, 1.0);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              LinearProgressIndicator(
+                                value: remainingPercent,
+                                minHeight: 8,
+                                backgroundColor: const Color(0xFFE5E7EB),
+                                color: const Color(0xFF7BAFFC),
+                                borderRadius: BorderRadius.circular(
+                                  6,
+                                ), // ✅ keep your rounded style
+                              ),
+                              const SizedBox(height: 3),
+
+                              // ✅ Show "₹ spent" instead of percent
+                              Text(
+                                "₹${totalExpense.toStringAsFixed(0)} spent",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
