@@ -1,3 +1,4 @@
+// lib/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,45 +11,28 @@ import 'notification_page.dart';
 import 'chat/chat_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart';
-import 'ai chat bot/ai_intro_page.dart'; // ✅ Correct import path
-import 'Quiz game/quiz.dart'; // Ensure this points to your quiz page file
-import 'models/news_article.dart'; //for loading news
+import 'ai chat bot/ai_intro_page.dart';
+import 'Quiz Game/quiz.dart';
+import 'models/news_article.dart';
 import 'services/rss_news_services.dart';
 import 'services/recurring_payment_checker.dart';
-import 'goal_page.dart';
-import 'budget_page.dart';
+
 import 'pending_payments_page.dart';
+import 'budget_page.dart';
+import 'goal_page.dart';
 import 'debts_page.dart';
 import 'planned_payments_page.dart';
 
-List<Map<String, dynamic>> notifications = []; //low budget notifications
+List<Map<String, dynamic>> notifications = [];
 
 final urgentPayments = [
-  {
-    'title': 'Library Fine',
-    'due': 'Due in 2 days',
-    'amount': '₹250',
-    'status': 'Overdue',
-  },
-  {
-    'title': 'Mess Fee',
-    'due': 'Due in 5 days',
-    'amount': '₹3100',
-    'status': 'Upcoming',
-  },
+  {'title': 'Library Fine', 'due': 'Due in 2 days', 'amount': '₹250', 'status': 'Overdue'},
+  {'title': 'Mess Fee', 'due': 'Due in 5 days', 'amount': '₹3100', 'status': 'Upcoming'},
 ];
 
 final categories = [
-  {
-    'title': 'Food & Dining',
-    'icon': Icons.restaurant,
-    'color': Color(0xFFFDF5E6),
-  },
-  {
-    'title': 'Transportation',
-    'icon': Icons.directions_bus,
-    'color': Color(0xFFEAF6FA),
-  },
+  {'title': 'Food & Dining', 'icon': Icons.restaurant, 'color': Color(0xFFFDF5E6)},
+  {'title': 'Transportation', 'icon': Icons.directions_bus, 'color': Color(0xFFEAF6FA)},
   {'title': 'Education', 'icon': Icons.school, 'color': Color(0xFFF3EDF9)},
   {'title': 'Entertainment', 'icon': Icons.movie, 'color': Color(0xFFF7E6ED)},
 ];
@@ -72,7 +56,7 @@ class _HomePageState extends State<HomePage> {
     _loadUserName();
     _loadTotals();
     _loadNotifications();
-    _loadRssNews(); 
+    _loadRssNews();
     RecurringPaymentChecker.checkAndMoveRecurringPayments();
   }
 
@@ -260,6 +244,14 @@ class _HomePageState extends State<HomePage> {
                 // TOP ROW: menu icon left and icons (notifications, pending, profile) on the right (kept slightly higher)
                 Row(
                   children: [
+                    // menu icon (opens drawer)
+                    Builder(
+                      builder: (ctx) => IconButton(
+                        icon: const Icon(Icons.menu_rounded, color: Colors.black87, size: 26),
+                        onPressed: () => Scaffold.of(ctx).openDrawer(),
+                      ),
+                    ),
+
                     const Spacer(),
 
                     // notification icon
@@ -278,7 +270,8 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    //Pending Payments Icon
+
+                    // pending payments icon
                     IconButton(
                       icon: const Icon(
                         Icons.hourglass_bottom,
@@ -307,7 +300,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                       child: const CircleAvatar(
-                        radius: 20,
+                        radius: 18,
                         backgroundColor: Colors.purple,
                       ),
                     ),
@@ -346,16 +339,10 @@ class _HomePageState extends State<HomePage> {
 
                 // Finance News Section (unchanged)
                 if (_rssArticles.isNotEmpty) ...[
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 6),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 22),
-                    child: Text(
-                      'Finance News',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
+                    child: Text('Finance News', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
@@ -384,21 +371,13 @@ class _HomePageState extends State<HomePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.article_outlined,
-                                  color: Color(0xFF0077B6),
-                                  size: 20,
-                                ),
+                                const Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 20),
                                 const SizedBox(height: 8),
                                 Text(
                                   article.title,
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF005678),
-                                  ),
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF005678)),
                                 ),
                               ],
                             ),
@@ -410,21 +389,14 @@ class _HomePageState extends State<HomePage> {
                 ] else
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFFDDF4FF),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: const [
-                        Icon(
-                          Icons.article_outlined,
-                          color: Color(0xFF0077B6),
-                          size: 18,
-                        ),
+                        Icon(Icons.article_outlined, color: Color(0xFF0077B6), size: 18),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -477,13 +449,11 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 5),
-
-                      // === AMOUNTS ===
                       Row(
                         children: [
                           Expanded(
                             child: Text(
-                              "₹${(monthlyBudget - totalExpense).toStringAsFixed(0)}", // ✅ fixed logic
+                              "₹${amountLeft.toStringAsFixed(0)}",
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
@@ -750,7 +720,7 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) => AiIntroPage(),
-            ), // ✅ Fixed navigation (no const)
+            ),
           );
         },
         child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
