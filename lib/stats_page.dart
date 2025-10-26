@@ -27,7 +27,6 @@ class _StatisticsMainPageState extends State<StatisticsMainPage> {
 
   final List<String> _tabs = [
     'OUTLOOK',
-    'BALANCE',
     'CASH-FLOW',
     'SPENDING',
     'REPORT',
@@ -118,7 +117,6 @@ class _StatisticsMainPageState extends State<StatisticsMainPage> {
               },
               children: const [
                 OutlookPage(),
-                BalancePage(),
                 CashFlowPage(),
                 SpendingPage(),
                 ReportPage(),
@@ -132,7 +130,7 @@ class _StatisticsMainPageState extends State<StatisticsMainPage> {
 }
 
 /// ===============================================================
-/// 🔹 OUTLOOK PAGE (Your Original Code, UNCHANGED)
+/// 🔹 OUTLOOK PAGE (Your Original Code, UNCHANGED except category-wise spending made dynamic)
 /// ===============================================================
 class OutlookPage extends StatefulWidget {
   const OutlookPage({super.key});
@@ -519,7 +517,7 @@ class _OutlookPageState extends State<OutlookPage> {
   }
 
   Widget _buildCategoryProgress() {
-    List<String> categories = ['Food & Dining', 'Education', 'Entertainment', 'Others'];
+    List<String> categories = categoryData.keys.toList();
     return Column(
       children: categories.map((cat) {
         double catExpense = categoryData[cat] ?? 0;
@@ -555,7 +553,7 @@ class _OutlookPageState extends State<OutlookPage> {
 }
 
 /// ===============================================================
-/// 🔹 CASHFLOW PAGE (new) - uses Firestore data (last 30 days + comparisons)
+/// 🔹 CASHFLOW PAGE (unchanged)
 /// ===============================================================
 class CashFlowPage extends StatefulWidget {
   const CashFlowPage({super.key});
@@ -584,7 +582,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
   double incomeThisYear = 0;
   double expenseThisYear = 0;
   double incomePrevYear = 0;
-  double expensePrevYear = 0;
+    double expensePrevYear = 0;
 
   @override
   void initState() {
@@ -917,7 +915,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
 }
 
 /// ===============================================================
-/// 🔹 SPENDING PAGE (new) - category pie, trend, nature of spending.
+/// 🔹 SPENDING PAGE (modified: added color legend for pie, removed nature of spending, improved categories UI)
 /// ===============================================================
 class SpendingPage extends StatefulWidget {
   const SpendingPage({super.key});
@@ -933,10 +931,6 @@ class _SpendingPageState extends State<SpendingPage> {
   Map<String, double> categoryTotals = {}; // category -> total expense
   Map<DateTime, double> spendingByDay = {};
   double totalSpending = 0;
-
-  // nature of spending
-  double essentialTotal = 0;
-  double nonEssentialTotal = 0;
 
   // simple essentials list fallback (if no is_essential field present)
   final List<String> _essentialCategories = [
@@ -975,8 +969,6 @@ class _SpendingPageState extends State<SpendingPage> {
     Map<String, double> catTotals = {};
     Map<DateTime, double> dayTotals = {};
     double tot = 0;
-    double essential = 0;
-    double nonessential = 0;
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
@@ -990,15 +982,6 @@ class _SpendingPageState extends State<SpendingPage> {
         tot += amount;
         catTotals[category] = (catTotals[category] ?? 0) + amount;
         dayTotals[date] = (dayTotals[date] ?? 0) + amount;
-
-        // detect essential: use explicit field if present else fallback to category list
-        if (data.containsKey('is_essential')) {
-          final isEssential = data['is_essential'] == true;
-          if (isEssential) essential += amount; else nonessential += amount;
-        } else {
-          if (_essentialCategories.contains(category)) essential += amount;
-          else nonessential += amount;
-        }
       } else {
         // treat incomes separate; we don't add them to spending totals
       }
@@ -1008,8 +991,6 @@ class _SpendingPageState extends State<SpendingPage> {
       categoryTotals = catTotals;
       spendingByDay = dayTotals;
       totalSpending = tot;
-      essentialTotal = essential;
-      nonEssentialTotal = nonessential;
       loading = false;
     });
   }
@@ -1061,6 +1042,8 @@ class _SpendingPageState extends State<SpendingPage> {
     final pieSections = _makePieSections();
     final spots = _spendingSpots();
     final labels = _spendingLabels();
+    final colors = [Colors.blueAccent, Colors.orangeAccent, Colors.green, Colors.purpleAccent, Colors.teal, Colors.amber];
+    final cats = categoryTotals.keys.toList();
 
     return Scaffold(
       backgroundColor: primaryColor,
@@ -1070,7 +1053,7 @@ class _SpendingPageState extends State<SpendingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top: Pie chart + total
+              // Top: Pie chart + total + legend
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
@@ -1086,6 +1069,24 @@ class _SpendingPageState extends State<SpendingPage> {
                     ),
                     const SizedBox(height: 8),
                     Text('Total Spending: ₹${totalSpending.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    // Legend for pie chart colors
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: List.generate(cats.length, (i) {
+                        final cat = cats[i];
+                        final color = colors[i % colors.length];
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+                            const SizedBox(width: 6),
+                            Text('$cat: ₹${categoryTotals[cat]?.toStringAsFixed(2) ?? '0.00'}'),
+                          ],
+                        );
+                      }),
+                    ),
                   ],
                 ),
               ),
@@ -1140,36 +1141,7 @@ class _SpendingPageState extends State<SpendingPage> {
 
               const SizedBox(height: 12),
 
-              // Nature of spending
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  children: [
-                    const Text('Nature of Spending', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Column(children: [
-                          const Text('Essential'),
-                          const SizedBox(height: 6),
-                          Text('₹${essentialTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ]),
-                        Column(children: [
-                          const Text('Non-essential'),
-                          const SizedBox(height: 6),
-                          Text('₹${nonEssentialTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ]),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Category tabs (quick access)
+              // Categories (improved UI: grid or better layout)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
@@ -1178,18 +1150,40 @@ class _SpendingPageState extends State<SpendingPage> {
                   children: [
                     const Text('Categories', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: categoryTotals.keys.map((cat) {
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 3,
+                      ),
+                      itemCount: categoryTotals.length,
+                      itemBuilder: (context, index) {
+                        final cat = cats[index];
+                        final amount = categoryTotals[cat] ?? 0;
                         return GestureDetector(
                           onTap: () {
-                            // navigate to a category detail (placeholder); you can replace with your real category page
+                            // navigate to category detail
                             Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryDetailPage(category: cat)));
                           },
-                          child: Chip(label: Text(cat)),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: secondaryColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text('₹${amount.toStringAsFixed(2)}'),
+                              ],
+                            ),
+                          ),
                         );
-                      }).toList(),
+                      },
                     ),
                   ],
                 ),
@@ -1202,7 +1196,7 @@ class _SpendingPageState extends State<SpendingPage> {
   }
 }
 
-/// Small category detail page (placeholder) - you said you have a page showing categories, this navigates there
+/// Small category detail page (placeholder)
 class CategoryDetailPage extends StatelessWidget {
   final String category;
   const CategoryDetailPage({required this.category, super.key});
@@ -1217,7 +1211,7 @@ class CategoryDetailPage extends StatelessWidget {
 }
 
 /// ===============================================================
-/// 🔹 REPORT PAGE (new) - table summary and bill-style summary
+/// 🔹 REPORT PAGE (modified: bill-style quick report with total transactions)
 /// ===============================================================
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -1298,8 +1292,7 @@ class _ReportPageState extends State<ReportPage> {
       totalIncome = inc;
       totalExpense = exp;
       avgPerTransaction = avgTrans.toDouble();
-avgPerDay = avgDay.toDouble();
-
+      avgPerDay = avgDay.toDouble();
       categoryTotals = catTotals;
       loading = false;
     });
@@ -1335,33 +1328,79 @@ avgPerDay = avgDay.toDouble();
               const Text('Quick Report', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
 
-              // Summary table (cards)
+              // Bill-style summary
               Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black12),
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text('Expense Bill', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    const Text('Category Breakdown:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...categoryTotals.entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(entry.key),
+                            Text('₹${entry.value.toStringAsFixed(2)}'),
+                          ],
+                        ),
+                      );
+                    }),
+                    const Divider(),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _reportMetric('Transactions', countTransactions.toString()),
-                        _reportMetric('Avg / Txn', '₹${avgPerTransaction.toStringAsFixed(2)}'),
+                        const Text('Total Spent:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('₹${totalExpense.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _reportMetric('Avg / Day', '₹${avgPerDay.toStringAsFixed(2)}'),
-                        _reportMetric('Total Spent', '₹${totalExpense.toStringAsFixed(2)}'),
+                        const Text('Total Income:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('₹${totalIncome.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _reportMetric('Total Income', '₹${totalIncome.toStringAsFixed(2)}'),
-                        _reportMetric('Net', '₹${(totalIncome - totalExpense).toStringAsFixed(2)}'),
+                        const Text('Net:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('₹${(totalIncome - totalExpense).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Transactions:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('$countTransactions', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Avg per Transaction:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('₹${avgPerTransaction.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Avg per Day:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('₹${avgPerDay.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -1370,7 +1409,7 @@ avgPerDay = avgDay.toDouble();
 
               const SizedBox(height: 12),
 
-              // Category bar chart (bill style)
+              // Spending by Category bar chart (unchanged)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
@@ -1394,12 +1433,10 @@ avgPerDay = avgDay.toDouble();
                                       getTitlesWidget: (value, meta) {
                                         final idx = value.toInt();
                                         if (idx < 0 || idx >= catLabels.length) return const SizedBox();
-                                        final label = catLabels[idx];
-                                       return SideTitleWidget(
-  meta: meta,
-  child: Text(label, style: const TextStyle(fontSize: 10)),
-);
-
+                                        return SideTitleWidget(
+                                          meta: meta,
+                                          child: Text(catLabels[idx], style: const TextStyle(fontSize: 10)),
+                                        );
                                       },
                                     ),
                                   ),
@@ -1428,18 +1465,5 @@ avgPerDay = avgDay.toDouble();
         Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ],
     );
-  }
-}
-
-/// ===============================================================
-/// 🔹 BALANCE PAGE (kept simple — you earlier asked not to change UI/logic of your stats code;
-/// this BalancePage was placeholder in your provided code, so left as-is)
-/// ===============================================================
-class BalancePage extends StatelessWidget {
-  const BalancePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Balance Page (Balance Trend, Accounts, Currency)'));
   }
 }
