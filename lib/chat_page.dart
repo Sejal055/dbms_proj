@@ -127,7 +127,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 12),
-                  Text(tabNames[index], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? primaryColor : Colors.grey[600])),
+                  Text(
+                    tabNames[index], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? primaryColor : Colors.grey[600])),
                   const SizedBox(height: 6),
                   Container(height: 3, width: 40, decoration: BoxDecoration(color: isSelected ? primaryColor : Colors.transparent, borderRadius: BorderRadius.circular(3))),
                   const SizedBox(height: 6),

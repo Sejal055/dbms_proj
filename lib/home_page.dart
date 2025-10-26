@@ -23,21 +23,6 @@ import 'planned_payments_page.dart';
 
 List<Map<String, dynamic>> notifications = []; //low budget notifications
 
-final urgentPayments = [
-  {
-    'title': 'Library Fine',
-    'due': 'Due in 2 days',
-    'amount': '₹250',
-    'status': 'Overdue',
-  },
-  {
-    'title': 'Mess Fee',
-    'due': 'Due in 5 days',
-    'amount': '₹3100',
-    'status': 'Upcoming',
-  },
-];
-
 final categories = [
   {
     'title': 'Food & Dining',
@@ -72,7 +57,7 @@ class _HomePageState extends State<HomePage> {
     _loadUserName();
     _loadTotals();
     _loadNotifications();
-    _loadRssNews(); 
+    _loadRssNews();
     RecurringPaymentChecker.checkAndMoveRecurringPayments();
   }
 
@@ -176,48 +161,90 @@ class _HomePageState extends State<HomePage> {
                 alignment: Alignment.bottomLeft,
                 child: Text(
                   'Budget Buddy',
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.home_rounded, color: Color(0xFF7BAFFC)),
-              title: const Text('Home', style: TextStyle(fontWeight: FontWeight.w500)),
+              title: const Text(
+                'Home',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 // stay on home
               },
             ),
             ListTile(
-              leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF7BAFFC)),
-              title: const Text('Budget', style: TextStyle(fontWeight: FontWeight.w500)),
+              leading: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Color(0xFF7BAFFC),
+              ),
+              title: const Text(
+                'Budget',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BudgetPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BudgetPage()),
+                );
               },
             ),
             ListTile(
               leading: const Icon(Icons.flag_rounded, color: Color(0xFF7BAFFC)),
-              title: const Text('Goals', style: TextStyle(fontWeight: FontWeight.w500)),
+              title: const Text(
+                'Goals',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GoalPage()),
+                );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.money_off_rounded, color: Color(0xFF7BAFFC)),
-              title: const Text('Debts', style: TextStyle(fontWeight: FontWeight.w500)),
+              leading: const Icon(
+                Icons.money_off_rounded,
+                color: Color(0xFF7BAFFC),
+              ),
+              title: const Text(
+                'Debts',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const DebtsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DebtsPage()),
+                );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.schedule_rounded, color: Color(0xFF7BAFFC)),
-              title: const Text('Planned Payments', style: TextStyle(fontWeight: FontWeight.w500)),
+              leading: const Icon(
+                Icons.schedule_rounded,
+                color: Color(0xFF7BAFFC),
+              ),
+              title: const Text(
+                'Planned Payments',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PlannedPaymentsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PlannedPaymentsPage(),
+                  ),
+                );
               },
             ),
             const Spacer(),
@@ -237,7 +264,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     double amountLeft = (monthlyBudget + totalIncome - totalExpense);
-    double usedPercent = monthlyBudget == 0 ? 0.0 : ((monthlyBudget - amountLeft) / monthlyBudget).clamp(0.0, 1.0);
+    double usedPercent = monthlyBudget == 0
+        ? 0.0
+        : ((monthlyBudget - amountLeft) / monthlyBudget).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -333,10 +362,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 4),
                       const Text(
                         'Ready to track your expenses today?',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
                       ),
                     ],
                   ),
@@ -667,76 +693,162 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(height: 18),
+
+                // --- Urgent Payments Section ---
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 22),
-                  child: Text(
-                    'Urgent Payments',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Urgent Payments',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                ...urgentPayments.map(
-                  (item) => Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 17,
-                      vertical: 5,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 15,
-                      vertical: 13,
-                    ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF9E5),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['title']!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                item['due']!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              item['amount']!,
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              item['status']!,
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFEAEA), Color(0xFFFFF3F3)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.redAccent.withOpacity(0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 16,
+                    ),
+
+                    // ✅ Filter only urgent notifications
+                    child: (() {
+                      final urgentNotifications = notifications.where((notif) {
+                        final body = (notif['body'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final title = (notif['title'] ?? '')
+                            .toString()
+                            .toLowerCase();
+
+                        return body.contains('due') ||
+                            body.contains('overdue') ||
+                            body.contains('unpaid') ||
+                            title.contains('due') ||
+                            title.contains('overdue') ||
+                            title.contains('unpaid');
+                      }).toList();
+
+                      if (urgentNotifications.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No urgent payments 🎉',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children: urgentNotifications.map((notif) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.redAccent.withOpacity(0.1),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFE6E6),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_active_rounded,
+                                    color: Colors.redAccent,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        notif['title'] ?? '',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        notif['body'] ?? '',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.topRight,
+                                  child: Text(
+                                    notif['timestamp'] != null &&
+                                            notif['timestamp'] is Timestamp
+                                        ? (notif['timestamp'] as Timestamp)
+                                              .toDate()
+                                              .toLocal()
+                                              .toString()
+                                              .split('.')
+                                              .first
+                                        : '',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    })(),
                   ),
                 ),
-                const SizedBox(height: 55),
               ],
             ),
           ),

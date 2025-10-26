@@ -19,6 +19,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
   // Controllers
   final TextEditingController nameController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
+  final TextEditingController payToController = TextEditingController();
+
   DateTime? selectedDate;
   String? selectedCategory;
   String? selectedFrequency;
@@ -47,17 +49,14 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
   }
 
   Future<void> _initNotifications() async {
-    await AwesomeNotifications().initialize(
-      null,
-      [
-        NotificationChannel(
-          channelKey: 'payment_reminder_channel',
-          channelName: 'Payment Reminders',
-          channelDescription: 'Reminders for upcoming or pending payments',
-          importance: NotificationImportance.Max,
-        ),
-      ],
-    );
+    await AwesomeNotifications().initialize(null, [
+      NotificationChannel(
+        channelKey: 'payment_reminder_channel',
+        channelName: 'Payment Reminders',
+        channelDescription: 'Reminders for upcoming or pending payments',
+        importance: NotificationImportance.Max,
+      ),
+    ]);
     if (!(await AwesomeNotifications().isNotificationAllowed())) {
       await AwesomeNotifications().requestPermissionToSendNotifications();
     }
@@ -93,8 +92,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
   Future<void> _saveData() async {
     if (!_formKey.currentState!.validate()) return;
     if (selectedCategory == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Select a category")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Select a category")));
       return;
     }
 
@@ -108,8 +108,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     final now = DateTime.now();
 
     try {
-      final userRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
 
       if (currentTab == "Expense") {
         await userRef.collection('expenses').add({
@@ -128,6 +129,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
           'amount': amount,
           'category': selectedCategory,
           'type': type,
+          'pay_to': payToController.text.trim(),
           'status': 'pending',
           'timestamp': FieldValue.serverTimestamp(),
         });
@@ -135,8 +137,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
 
       if (currentTab == "Future") {
         if (selectedDate == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Select a future date")));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Select a future date")));
           setState(() => _isSaving = false);
           return;
         }
@@ -146,21 +149,22 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
           'amount': amount,
           'category': selectedCategory,
           'type': type,
+          'pay_to': payToController.text.trim(),
           'scheduled_for': selectedDate,
           'status': 'scheduled',
           'timestamp': FieldValue.serverTimestamp(),
         });
 
         // Reminder notification 2 days before
-        final reminderDate =
-            selectedDate!.subtract(const Duration(days: 2));
+        final reminderDate = selectedDate!.subtract(const Duration(days: 2));
 
         await AwesomeNotifications().createNotification(
           content: NotificationContent(
             id: name.hashCode,
             channelKey: 'payment_reminder_channel',
             title: 'Upcoming payment reminder',
-            body: 'Your $name of ₹$amount is due on ${DateFormat('dd MMM').format(selectedDate!)}',
+            body:
+                'Your $name of ₹$amount is due on ${DateFormat('dd MMM').format(selectedDate!)}',
           ),
           schedule: NotificationCalendar.fromDate(date: reminderDate),
         );
@@ -176,7 +180,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
       if (currentTab == "Recurring") {
         if (selectedDate == null || selectedFrequency == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Select date and frequency")));
+            const SnackBar(content: Text("Select date and frequency")),
+          );
           setState(() => _isSaving = false);
           return;
         }
@@ -219,13 +224,14 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
       Navigator.of(context).pop();
       nameController.clear();
       amountController.clear();
+      payToController.clear();
       selectedDate = null;
       selectedCategory = null;
       selectedFrequency = null;
-
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed: $e")));
     } finally {
       setState(() => _isSaving = false);
     }
@@ -296,7 +302,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                       onSelected: (_) => setState(() => currentTab = tab),
                       selectedColor: const Color(0xFFD6A8F8),
                       labelStyle: TextStyle(
-                          color: selected ? Colors.white : Colors.black),
+                        color: selected ? Colors.white : Colors.black,
+                      ),
                     );
                   }).toList(),
                 ),
@@ -313,7 +320,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                         onSelected: (_) => setState(() => type = "Pay"),
                         selectedColor: Colors.blueAccent,
                         labelStyle: TextStyle(
-                            color: type == "Pay" ? Colors.white : Colors.black),
+                          color: type == "Pay" ? Colors.white : Colors.black,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       ChoiceChip(
@@ -322,8 +330,10 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                         onSelected: (_) => setState(() => type = "Receive"),
                         selectedColor: Colors.green,
                         labelStyle: TextStyle(
-                            color:
-                                type == "Receive" ? Colors.white : Colors.black),
+                          color: type == "Receive"
+                              ? Colors.white
+                              : Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -345,8 +355,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                 // Amount
                 TextFormField(
                   controller: amountController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   validator: (v) =>
                       (v == null || v.isEmpty) ? "Enter amount" : null,
                   decoration: const InputDecoration(
@@ -356,14 +367,35 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                 ),
                 const SizedBox(height: 12),
 
+                // Pay To / Receive From (only for Pending or Future)
+                if (currentTab == "Pending" || currentTab == "Future") ...[
+                  TextFormField(
+                    controller: payToController,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? (type == "Pay"
+                              ? "Enter name of person to pay"
+                              : "Enter name of person to receive from")
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: type == "Pay" ? "Pay to" : "Receive from",
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
                 // Category
                 isLoadingCategories
                     ? const CircularProgressIndicator()
                     : DropdownButtonFormField<String>(
                         value: selectedCategory,
                         items: allCategories
-                            .map((cat) =>
-                                DropdownMenuItem(value: cat, child: Text(cat)))
+                            .map(
+                              (cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Text(cat),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setState(() => selectedCategory = v),
                         decoration: const InputDecoration(
@@ -382,10 +414,13 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                       Expanded(
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.calendar_today),
-                          label: Text(selectedDate == null
-                              ? "Select Date"
-                              : DateFormat('dd MMM yyyy')
-                                  .format(selectedDate!)),
+                          label: Text(
+                            selectedDate == null
+                                ? "Select Date"
+                                : DateFormat(
+                                    'dd MMM yyyy',
+                                  ).format(selectedDate!),
+                          ),
                           onPressed: _pickDate,
                         ),
                       ),
@@ -396,8 +431,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                     DropdownButtonFormField<String>(
                       value: selectedFrequency,
                       items: ['Weekly', 'Monthly', 'Yearly']
-                          .map((f) =>
-                              DropdownMenuItem(value: f, child: Text(f)))
+                          .map(
+                            (f) => DropdownMenuItem(value: f, child: Text(f)),
+                          )
                           .toList(),
                       onChanged: (v) => setState(() => selectedFrequency = v),
                       decoration: const InputDecoration(
@@ -416,9 +452,13 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                     onPressed: _isSaving ? null : _saveData,
                     child: _isSaving
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Save",
+                        : const Text(
+                            "Save",
                             style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ],

@@ -61,15 +61,44 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
               final data = doc.data() as Map<String, dynamic>;
 
               final title = data['title'] ?? 'Untitled';
-              final amount = data['amount'] ?? 0.0;
+              final amount = (data['amount'] ?? 0).toDouble();
               final category = data['category'] ?? 'Uncategorized';
               final type = data['type'] ?? 'Pay';
               final status = data['status'] ?? 'pending';
-              final createdAt = (data['created_at'] ?? '') as String;
+              final payTo =
+                  data['pay_to'] ?? ''; // New field for Pay/Receive name
+
+              // ✅ Handle Timestamps safely
+              DateTime? createdAt;
+              if (data['created_at'] is Timestamp) {
+                createdAt = (data['created_at'] as Timestamp).toDate();
+              } else if (data['created_at'] is String) {
+                createdAt = DateTime.tryParse(data['created_at']);
+              } else if (data['timestamp'] is Timestamp) {
+                createdAt = (data['timestamp'] as Timestamp).toDate();
+              }
 
               DateTime? scheduledFor;
-              if (data['scheduled_for'] != null) {
+              if (data['scheduled_for'] is Timestamp) {
+                scheduledFor = (data['scheduled_for'] as Timestamp).toDate();
+              } else if (data['scheduled_for'] is String) {
                 scheduledFor = DateTime.tryParse(data['scheduled_for']);
+              }
+
+              // ✅ Choose best date to display
+              String dateText;
+              Color dateColor;
+              if (scheduledFor != null) {
+                dateText =
+                    'Scheduled for: ${scheduledFor.toLocal().toString().split(' ')[0]}';
+                dateColor = Colors.deepPurple;
+              } else if (createdAt != null) {
+                dateText =
+                    'Added on: ${createdAt.toLocal().toString().split(' ')[0]}';
+                dateColor = Colors.grey;
+              } else {
+                dateText = 'Date unavailable';
+                dateColor = Colors.grey;
               }
 
               return Card(
@@ -93,7 +122,7 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title and Amount
+                      // 🔹 Title + Amount
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -118,7 +147,7 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Category and Type
+                      // 🔹 Category + Type
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -140,34 +169,45 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 6),
 
-                      const SizedBox(height: 8),
-
-                      // Dates
-                      if (status == 'future' && scheduledFor != null)
-                        Text(
-                          'Scheduled for: ${scheduledFor.toLocal().toString().split(' ')[0]}',
-                          style: const TextStyle(
-                            color: Colors.deepPurple,
-                            fontSize: 13,
-                          ),
-                        )
-                      else
-                        Text(
-                          'Added on: ${createdAt.split('T')[0]}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
+                      // 🔹 Date + Pay to / Receive from name
+                      if (payTo.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                type == 'Pay'
+                                    ? 'Pay to: $payTo'
+                                    : 'Receive from: $payTo',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              dateText,
+                              style: TextStyle(color: dateColor, fontSize: 13),
+                              textAlign: TextAlign.right,
+                            ),
+                          ],
                         ),
+                      ],
 
                       const SizedBox(height: 12),
 
-                      // Buttons Row
+                      // 🔹 Buttons
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Pay Button
+                          // Pay button (only for "Pay" type)
                           if (type == 'Pay')
                             ElevatedButton.icon(
                               onPressed: () async {
@@ -184,21 +224,27 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
                               ),
                             ),
 
-                          // Mark as Paid Button
+                          // ✅ Mark as Paid / Received
                           ElevatedButton.icon(
                             onPressed: () async {
-                              await _markAsPaid(doc.id, data);
+                              await _markAsDone(doc.id, data);
                             },
                             icon: const Icon(Icons.check_circle_outline),
-                            label: const Text('Mark as Paid'),
+                            label: Text(
+                              type == 'Pay'
+                                  ? 'Mark as Paid'
+                                  : 'Mark as Received',
+                            ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
+                              backgroundColor: Colors.lightBlueAccent,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                             ),
                           ),
                         ],
@@ -214,47 +260,67 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
     );
   }
 
-  /// 🔹 Function to open external UPI app without needing stored UPI ID
+  /// 🔹 Function to open external UPI app
   Future<void> _openUpiPayment(String title, num amount) async {
     final upiUrl =
         'upi://pay?pa=someone@upi&pn=$title&am=$amount&cu=INR&tn=Payment for $title';
     final uri = Uri.parse(upiUrl);
 
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open UPI app')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not open UPI app')));
     }
   }
 
-  /// 🔹 Function to move payment to History
-  Future<void> _markAsPaid(String docId, Map<String, dynamic> data) async {
+  // 🔹 Function to move payment to History
+  Future<void> _markAsDone(String docId, Map<String, dynamic> data) async {
     try {
-      final userRef =
-          FirebaseFirestore.instance.collection('users').doc(user!.uid);
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid);
 
-      // Move to history (ensure correct timestamp)
+      final bool isPay = data['type'] == 'Pay';
+
+      // ✅ Save to 'history' collection in same format used by HistoryPage
       await userRef.collection('history').add({
-        'title': data['title'],
+        'expense_name': data['title'],
         'amount': data['amount'],
         'category': data['category'],
-        'type': data['type'],
-        'paid_on': FieldValue.serverTimestamp(),
+        'expense_type': isPay ? 'Expense' : 'Income',
+        'timestamp': FieldValue.serverTimestamp(),
+        'source': 'Pending', // helpful for debugging
       });
 
-      // Delete from pending_payments
+      // ✅ Optionally also store in 'expenses' (if you want unified data)
+      await userRef.collection('expenses').add({
+        'expense_name': data['title'],
+        'amount': data['amount'],
+        'category': data['category'],
+        'expense_type': isPay ? 'Expense' : 'Income',
+        'timestamp': FieldValue.serverTimestamp(),
+        'source': 'Pending',
+      });
+
+      // ✅ Delete from pending list
       await userRef.collection('pending_payments').doc(docId).delete();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment moved to History ✅')),
+          SnackBar(
+            content: Text(
+              isPay
+                  ? 'Payment marked as Paid ✅ and moved to history'
+                  : 'Payment marked as Received ✅ and moved to history',
+            ),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving to history: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving to history: $e')));
       }
     }
   }

@@ -21,7 +21,6 @@ void main() async {
   runApp(const BudgetBuddyApp());
 }
 
-
 class BudgetBuddyApp extends StatelessWidget {
   const BudgetBuddyApp({super.key});
 
