@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Secure Gemini Chat App",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        // MUST BE ONE CONTINUOUS STRING, NO SPACES AROUND THE KEY
+        "--dart-define=GEMINI_API_KEY=AIzaSyDJ_Ycv4xs_ENkI4I8GrnXbkRGKnGtfIy0"
+      ]
+    }
+  ]
+}
