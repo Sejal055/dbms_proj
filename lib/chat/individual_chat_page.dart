@@ -1,6 +1,7 @@
 // lib/individual_chat_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dbms_pro/add_expense_page.dart'; // <-- Make sure this path matches your project
 
 class IndividualChatPage extends StatefulWidget {
   final String name;
@@ -70,9 +71,79 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   void _scrollToBottom() {
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent + 80,
+      _scrollController.position.maxScrollExtent + 120,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> _openAddExpensePopup() async {
+    // Show your AddExpensePopup dialog. It manages saving/notifications itself.
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AddExpensePopup(
+        onCancel: () => Navigator.of(context).pop(),
+      ),
+    );
+    // After closing the dialog, optionally show a small confirmation message in chat
+    setState(() {
+      _messages.add({
+        'text': 'Expense entry added for ${widget.name}.',
+        'isMe': true,
+        'time': DateTime.now(),
+        'isMeta': true,
+      });
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  Future<void> _openSendReminderDialog() async {
+    final TextEditingController reminderController = TextEditingController(
+        text: 'Reminder: Please pay back / check this.');
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Send Reminder'),
+          content: TextField(
+            controller: reminderController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Type reminder message...',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // cancel
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final text = reminderController.text.trim();
+                if (text.isEmpty) return;
+                setState(() {
+                  _messages.add({
+                    'text': 'Reminder to ${widget.name}: $text',
+                    'isMe': true,
+                    'time': DateTime.now(),
+                    'isReminder': true,
+                  });
+                });
+                Navigator.of(context).pop();
+                WidgetsBinding.instance
+                    .addPostFrameCallback((_) => _scrollToBottom());
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reminder sent')),
+                );
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -136,10 +207,32 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                           ),
                         ),
                       ),
-                      // icons for call/video (simple)
-                      const Icon(Icons.videocam_outlined, color: Colors.black),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.call_outlined, color: Colors.black),
+
+                      // ---------- REPLACED ICONS ----------
+                      // Reminder icon
+                      InkWell(
+                        onTap: _openSendReminderDialog,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Icon(
+                            Icons.notifications_active_outlined,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+
+                      // Add Expense / Income icon
+                      InkWell(
+                        onTap: _openAddExpensePopup,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Icon(
+                            Icons.attach_money,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      // ------------------------------------
                     ],
                   ),
                 ),
@@ -192,8 +285,13 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                                 }
                                 final msg = _messages[index - 1];
                                 final isMe = msg['isMe'] as bool;
-                                return _buildMessageBubble(msg['text'] as String,
-                                    msg['time'] as DateTime, isMe, context);
+                                return _buildMessageBubble(
+                                  msg['text'] as String,
+                                  msg['time'] as DateTime,
+                                  isMe,
+                                  context,
+                                  meta: msg,
+                                );
                               },
                             ),
                           ),
@@ -213,8 +311,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  Widget _buildMessageBubble(
-      String text, DateTime time, bool isMe, BuildContext context) {
+  Widget _buildMessageBubble(String text, DateTime time, bool isMe,
+      BuildContext context, {Map<String, dynamic>? meta}) {
     // choose slightly different gradients for sent vs received so they are distinct but still in family
     final List<Color> bubbleGradient = isMe
         ? [
@@ -238,6 +336,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
     );
 
+    // If it's a reminder or meta message, change border color slightly
+    final bool isReminder = meta != null && (meta['isReminder'] == true);
+    final bool isMeta = meta != null && (meta['isMeta'] == true);
+
     return Align(
       alignment: alignment,
       child: Container(
@@ -250,7 +352,12 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(color: Colors.black, width: 0.8),
+          border: Border.all(
+            color: isReminder
+                ? Colors.orange.shade700
+                : (isMeta ? Colors.green.shade700 : Colors.black),
+            width: isReminder || isMeta ? 1.2 : 0.8,
+          ),
           borderRadius: borderRadius,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -263,6 +370,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
               style: TextStyle(
                 color: Colors.black87,
                 fontSize: 15,
+                fontWeight: isReminder ? FontWeight.bold : FontWeight.normal,
               ),
             ),
             const SizedBox(height: 6),
