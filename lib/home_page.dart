@@ -27,23 +27,42 @@ import 'planned_payments_page.dart';
 // 1. Color Palette Definition
 const Color _primaryColor = Color(0xFFD0E3FF); // Light Blue/Lavender
 const Color _secondaryColor = Color(0xFFE9D5F8); // Light Purple/Pink
-const Color _incomeColor = Color(0xFF5A96F0); // Bright Blue (Primary Action/Income, Progress Fill)
+const Color _incomeColor = Color(
+  0xFF5A96F0,
+); // Bright Blue (Primary Action/Income, Progress Fill)
 const Color _expenseColor = Color(0xFFB47BE8); // Medium Purple (Expense/Accent)
-const Color _lightBackground = Color(0xFFF9FAFF); // Very light background for overall UI
+const Color _lightBackground = Color(
+  0xFFF9FAFF,
+); // Very light background for overall UI
 const Color _headerColor = Colors.white; // Crisp white for the top header
 const Color _textPrimary = Color(0xFF333333); // Dark text for contrast
 const Color _textSecondary = Color(0xFF777777); // Light text for context
 
 // Updated categories list with new color scheme
 final categories = [
-  {'title': 'Food & Dining', 'icon': Icons.restaurant, 'color': _primaryColor.withOpacity(0.5)},
-  {'title': 'Transportation', 'icon': Icons.directions_bus, 'color': _secondaryColor.withOpacity(0.5)},
-  {'title': 'Education', 'icon': Icons.school, 'color': const Color(0xFFE8FFF0)}, // Custom light
-  {'title': 'Entertainment', 'icon': Icons.movie, 'color': const Color(0xFFFFECEB)}, // Custom light
+  {
+    'title': 'Food & Dining',
+    'icon': Icons.restaurant,
+    'color': _primaryColor.withOpacity(0.5),
+  },
+  {
+    'title': 'Transportation',
+    'icon': Icons.directions_bus,
+    'color': _secondaryColor.withOpacity(0.5),
+  },
+  {
+    'title': 'Education',
+    'icon': Icons.school,
+    'color': const Color(0xFFE8FFF0),
+  }, // Custom light
+  {
+    'title': 'Entertainment',
+    'icon': Icons.movie,
+    'color': const Color(0xFFFFECEB),
+  }, // Custom light
 ];
 
 List<Map<String, dynamic>> notifications = []; // low budget notifications
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -138,7 +157,9 @@ class _HomePageState extends State<HomePage> {
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
-      final amount = (data['expense_amount'] is num) ? (data['expense_amount'] as num).toDouble() : 0.0;
+      final amount = (data['expense_amount'] is num)
+          ? (data['expense_amount'] as num).toDouble()
+          : 0.0;
       final type = data['expense_type'] ?? '';
 
       if (type == 'Income') {
@@ -160,8 +181,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(
-          left: 20, right: 20, top: 30, bottom: 12),
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 30, bottom: 12),
       decoration: const BoxDecoration(
         color: _headerColor,
         boxShadow: [
@@ -185,7 +205,11 @@ class _HomePageState extends State<HomePage> {
               // menu icon (opens drawer)
               Builder(
                 builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu_rounded, color: _textPrimary, size: 24),
+                  icon: const Icon(
+                    Icons.menu_rounded,
+                    color: _textPrimary,
+                    size: 24,
+                  ),
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
               ),
@@ -227,14 +251,11 @@ class _HomePageState extends State<HomePage> {
               ),
 
               const SizedBox(width: 6), // Spacing between icons
-
               // profile avatar
               GestureDetector(
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ProfilePage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => ProfilePage()),
                   );
                 },
                 child: const CircleAvatar(
@@ -277,7 +298,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Helper widget for Income/Expense display
-  Widget _buildMetricPill({required IconData icon, required String title, required double amount, required Color color, required bool isExpense}) {
+  Widget _buildMetricPill({
+    required IconData icon,
+    required String title,
+    required double amount,
+    required Color color,
+    required bool isExpense,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -317,11 +344,12 @@ class _HomePageState extends State<HomePage> {
 
   // Total Balance Card (Uses the bright gradient)
   Widget _buildTotalBalanceCard() {
-    final currentTotalBalance = initialAccountBalance + totalIncome - totalExpense;
-    double amountLeft = (monthlyBudget - totalExpense);
-    double usedPercent = monthlyBudget <= 0
-        ? 0.0
-        : (totalExpense / monthlyBudget).clamp(0.0, 1.0);
+    final currentTotalBalance =
+        initialAccountBalance + totalIncome - totalExpense;
+    final double amountLeft = monthlyBudget - totalExpense;
+    final double percentLeft = monthlyBudget <= 0
+        ? 1.0
+        : ((monthlyBudget - totalExpense) / monthlyBudget).clamp(0.0, 1.0);
 
     return Container(
       width: double.infinity,
@@ -390,21 +418,30 @@ class _HomePageState extends State<HomePage> {
 
           // --- 2. Monthly Budget Status Section (Merged) ---
           Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  "Budget Left",
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 15, color: _textPrimary),
-                ),
-              ),
-              Text(
-                "Monthly Budget: ₹${monthlyBudget.toStringAsFixed(0)}",
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 12, color: _textSecondary),
-              ),
-            ],
-          ),
+  children: [
+    const Expanded(
+      child: Text(
+        "Budget Left",
+        style: TextStyle(
+            fontWeight: FontWeight.w600, fontSize: 15, color: _textPrimary),
+      ),
+    ),
+    Text(
+      "Monthly Budget: ₹${monthlyBudget.toStringAsFixed(0)}",
+      style: const TextStyle(
+          fontWeight: FontWeight.w500, fontSize: 12, color: _textSecondary),
+    ),
+  ],
+),
+const SizedBox(height: 6),
+// Text(
+//   // "₹${amountLeft.toStringAsFixed(0)}",
+//   // style: TextStyle(
+//   //   fontSize: 24,
+//   //   fontWeight: FontWeight.w800,
+//   //   color: amountLeft >= 0 ? _incomeColor : Colors.red.shade700,
+//   // ),
+// ),
           const SizedBox(height: 6),
           Text(
             "₹${amountLeft.toStringAsFixed(0)}",
@@ -416,20 +453,22 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
           LinearProgressIndicator(
-            value: usedPercent,
-            minHeight: 8,
-            backgroundColor: _headerColor,
-            color: usedPercent > 0.8 ? Colors.red.shade400 : _incomeColor,
-            borderRadius: BorderRadius.circular(8),
-          ),
+  value: percentLeft,
+  minHeight: 8,
+  backgroundColor: _headerColor,
+  color: percentLeft < 0.2 ? Colors.red.shade400 : _incomeColor,
+  borderRadius: BorderRadius.circular(8),
+),
+
           const SizedBox(height: 5),
           Text(
-            "${(usedPercent * 100).toStringAsFixed(1)}% of budget used",
-            style: const TextStyle(
-              fontSize: 11,
-              color: _textSecondary,
-            ),
-          ),
+  "${((1 - percentLeft) * 100).toStringAsFixed(1)}% of budget used",
+  style: const TextStyle(
+    fontSize: 11,
+    color: _textSecondary,
+  ),
+),
+
         ],
       ),
     );
@@ -474,7 +513,10 @@ class _HomePageState extends State<HomePage> {
           child: Text(
             'Finance News Digest',
             style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 16, color: _textPrimary),
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: _textPrimary,
+            ),
           ),
         ),
         SizedBox(
@@ -523,14 +565,19 @@ class _HomePageState extends State<HomePage> {
                       ),
                       Row(
                         children: const [
-                          Icon(Icons.open_in_new, color: _incomeColor, size: 14),
+                          Icon(
+                            Icons.open_in_new,
+                            color: _incomeColor,
+                            size: 14,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             "Tap to Read More",
                             style: TextStyle(
-                                fontSize: 12,
-                                color: _incomeColor,
-                                fontWeight: FontWeight.bold),
+                              fontSize: 12,
+                              color: _incomeColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -554,17 +601,13 @@ class _HomePageState extends State<HomePage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CategoryDetailPage(
-                category: cat['title'] as String,
-              ),
+              builder: (context) =>
+                  CategoryDetailPage(category: cat['title'] as String),
             ),
           );
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: 18,
-            horizontal: 10,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
           decoration: BoxDecoration(
             color: cat['color'] as Color, // Uses bright colors
             borderRadius: BorderRadius.circular(14),
@@ -579,16 +622,14 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                cat['icon'] as IconData,
-                size: 24,
-                color: _expenseColor,
-              ),
+              Icon(cat['icon'] as IconData, size: 24, color: _expenseColor),
               const SizedBox(height: 8),
               Text(
                 cat['title'] as String,
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -717,10 +758,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             child: urgentNotifications.isEmpty
                 ? const Center(
                     child: Padding(
@@ -791,10 +829,10 @@ class _HomePageState extends State<HomePage> {
                                 notif['timestamp'] != null &&
                                         notif['timestamp'] is Timestamp
                                     ? (notif['timestamp'] as Timestamp)
-                                        .toDate()
-                                        .toLocal()
-                                        .toString()
-                                        .substring(5, 10) // Show only MM-DD
+                                          .toDate()
+                                          .toLocal()
+                                          .toString()
+                                          .substring(5, 10) // Show only MM-DD
                                     : '',
                                 style: const TextStyle(
                                   fontSize: 11,
@@ -850,8 +888,10 @@ class _HomePageState extends State<HomePage> {
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading:
-                  const Icon(Icons.account_balance_wallet_rounded, color: _incomeColor),
+              leading: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: _incomeColor,
+              ),
               title: const Text(
                 'Budget',
                 style: TextStyle(fontWeight: FontWeight.w500),
@@ -879,10 +919,7 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.money_off_rounded,
-                color: _incomeColor,
-              ),
+              leading: const Icon(Icons.money_off_rounded, color: _incomeColor),
               title: const Text(
                 'Debts',
                 style: TextStyle(fontWeight: FontWeight.w500),
@@ -897,10 +934,7 @@ class _HomePageState extends State<HomePage> {
             ),
             // Quiz replaces Planned Payments (Maintained)
             ListTile(
-              leading: const Icon(
-                Icons.quiz_rounded,
-                color: _incomeColor,
-              ),
+              leading: const Icon(Icons.quiz_rounded, color: _incomeColor),
               title: const Text(
                 'Quiz',
                 style: TextStyle(fontWeight: FontWeight.w500),
@@ -909,9 +943,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const QuizPage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const QuizPage()),
                 );
               },
             ),
@@ -928,7 +960,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -954,9 +985,7 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const QuizPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const QuizPage()),
                 );
               },
               child: Container(
@@ -978,11 +1007,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: Row(
                   children: const [
-                    Icon(
-                      Icons.quiz_rounded,
-                      size: 26,
-                      color: _expenseColor,
-                    ),
+                    Icon(Icons.quiz_rounded, size: 26, color: _expenseColor),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -1019,7 +1044,8 @@ class _HomePageState extends State<HomePage> {
 
       // 2. The Floating Action Button is now the AI Chat Bot icon
       floatingActionButton: FloatingActionButton(
-        heroTag: "ai_fab", // Use a unique heroTag for multiple FloatingActionButtons
+        heroTag:
+            "ai_fab", // Use a unique heroTag for multiple FloatingActionButtons
         onPressed: () {
           Navigator.push(
             context,
@@ -1028,7 +1054,11 @@ class _HomePageState extends State<HomePage> {
         },
         backgroundColor: _expenseColor,
         // CHANGED ICON TO SMART TOY/ROBOT
-        child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 28),
+        child: const Icon(
+          Icons.smart_toy_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
       ),
 
       // 3. Bottom Bar: Re-implement Add Expense button inside the row
@@ -1047,7 +1077,11 @@ class _HomePageState extends State<HomePage> {
                   Icon(Icons.home_rounded, color: _incomeColor, size: 24),
                   Text(
                     'Home',
-                    style: TextStyle(fontSize: 10, color: _incomeColor, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: _incomeColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -1064,7 +1098,11 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.history_rounded, color: _textSecondary, size: 24),
+                    Icon(
+                      Icons.history_rounded,
+                      color: _textSecondary,
+                      size: 24,
+                    ),
                     Text(
                       'History',
                       style: TextStyle(fontSize: 10, color: _textSecondary),
@@ -1075,7 +1113,9 @@ class _HomePageState extends State<HomePage> {
 
               // Add Expense Button (Custom circle button to replace the docked FAB)
               Container(
-                margin: const EdgeInsets.only(top: 0), // No extra margin needed as it's inline
+                margin: const EdgeInsets.only(
+                  top: 0,
+                ), // No extra margin needed as it's inline
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
@@ -1115,7 +1155,11 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.bar_chart_rounded, color: _textSecondary, size: 24),
+                    Icon(
+                      Icons.bar_chart_rounded,
+                      color: _textSecondary,
+                      size: 24,
+                    ),
                     Text(
                       'Stats',
                       style: TextStyle(fontSize: 10, color: _textSecondary),
