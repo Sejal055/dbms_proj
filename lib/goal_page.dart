@@ -1,3 +1,4 @@
+// GoalPage.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +30,61 @@ final List<Map<String, dynamic>> predefinedGoals = [
   {'name': 'Kids Spoiling', 'icon': Icons.child_care, 'color': Colors.pinkAccent},
 ];
 
+/// Helper function that can be called from your Budget page when you compute leftover monthly budget.
+/// Usage (from your Budget logic):
+/// await transferLeftoverToGoals(userId, leftoverAmount);
+///
+/// Behavior:
+/// - Fetches active goals for the user.
+/// - Distributes leftover equally among all active goals (if any).
+/// - Updates each goal's current_amount and status (mark reached if target met).
+/// - Decrements users/{userId}.amount_in_account by the total transferred.
+/// - If no active goals exist, leaves leftover in the user's account.
+Future<void> transferLeftoverToGoals(String userId, double leftoverAmount) async {
+  if (leftoverAmount <= 0) return;
+
+  final goalsSnap = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .collection('goals')
+      .where('status', isEqualTo: 'active')
+      .get();
+
+  final activeDocs = goalsSnap.docs;
+  if (activeDocs.isEmpty) {
+    // No active goals: do nothing to goals (leftover remains in account)
+    return;
+  }
+
+  final perGoal = leftoverAmount / activeDocs.length;
+  final batch = FirebaseFirestore.instance.batch();
+
+  double totalTransferred = 0.0;
+
+  for (var doc in activeDocs) {
+    final data = doc.data();
+    final target = (data['target_amount'] ?? 0).toDouble();
+    final current = (data['current_amount'] ?? 0).toDouble();
+    final newCurrent = current + perGoal;
+    totalTransferred += perGoal;
+
+    final newStatus = newCurrent >= target ? 'reached' : 'active';
+
+    batch.update(doc.reference, {
+      'current_amount': newCurrent,
+      'status': newStatus,
+    });
+  }
+
+  // Decrement user's amount_in_account
+  final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
+  batch.update(userRef, {
+    'amount_in_account': FieldValue.increment(-totalTransferred),
+  });
+
+  await batch.commit();
+}
+
 // --- Main Widget ---
 class GoalPage extends StatefulWidget {
   const GoalPage({Key? key}) : super(key: key);
@@ -56,6 +112,14 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
     _fetchGoalsFromDB();
   }
 
+  @override
+  void dispose() {
+    _goalNameController.dispose();
+    _goalAmountController.dispose();
+    _currentAmountController.dispose();
+    super.dispose();
+  }
+
   // --- Firestore CRUD Operations ---
 
   Future<void> _fetchGoalsFromDB() async {
@@ -74,7 +138,10 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
         'targetAmount': (data['target_amount'] ?? 0).toDouble(),
         'currentAmount': (data['current_amount'] ?? 0).toDouble(),
         'icon': data['icon'] != null ? IconData(data['icon'], fontFamily: 'MaterialIcons') : Icons.stars,
-        'color': data['color'] != null ? Color(int.parse(data['color'])) : expenseColor,
+        'color': data['color'] != null
+            ? // stored previously as string like '429083123' (Color.value.toString())
+            Color(int.tryParse(data['color']) ?? expenseColor.value)
+            : expenseColor,
         'status': data['status'] == 'active'
             ? GoalStatus.active
             : data['status'] == 'paused'
@@ -126,6 +193,10 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$name goal created!')),
       );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid name and target amount.')),
+      );
     }
   }
 
@@ -139,7 +210,7 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
         .update({'status': newStatus.name});
 
     setState(() {
-      final originalIndex = _goals.indexOf(goal);
+      final originalIndex = _goals.indexWhere((g) => g['id'] == goalId);
       if (originalIndex != -1) {
         _goals[originalIndex]['status'] = newStatus;
       }
@@ -331,6 +402,104 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
     );
   }
 
+  // --- ADD SAVINGS FEATURE ---
+  Future<void> _showAddSavingsDialog(Map<String, dynamic> goal) async {
+    final TextEditingController amtController = TextEditingController();
+    final goalName = goal['name'] ?? 'Goal';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Add Savings to "$goalName"'),
+          content: TextField(
+            controller: amtController,
+            keyboardType: TextInputType.numberWithOptions(decimal: false),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Amount (₹)',
+              hintText: 'Enter amount to add',
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: incomeColor),
+              onPressed: () async {
+                final entered = double.tryParse(amtController.text);
+                Navigator.pop(ctx);
+
+                if (entered == null || entered <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount.')));
+                  return;
+                }
+
+                await _addSavingsToGoal(goal, entered);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addSavingsToGoal(Map<String, dynamic> goal, double amountToAdd) async {
+    final goalId = goal['id'] as String;
+    final goalRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('goals')
+        .doc(goalId);
+    final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
+
+    // Fetch fresh values to avoid race conditions
+    final goalSnap = await goalRef.get();
+    final userSnap = await userRef.get();
+
+    if (!goalSnap.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Goal not found.')));
+      return;
+    }
+
+    final currentAmount = (goalSnap.data()?['current_amount'] ?? 0).toDouble();
+    final targetAmount = (goalSnap.data()?['target_amount'] ?? 0).toDouble();
+    final availableInAccount = (userSnap.data()?['amount_in_account'] ?? 0).toDouble();
+
+    // If user's account doesn't have enough funds, still allow (but notify)
+    if (availableInAccount < amountToAdd) {
+      // Optionally: prevent the operation. But here we allow and set account to negative
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Warning: insufficient balance in account; proceeding will make your account negative.')));
+    }
+
+    final newCurrent = currentAmount + amountToAdd;
+    final newStatus = newCurrent >= targetAmount ? 'reached' : 'active';
+
+    final batch = FirebaseFirestore.instance.batch();
+    batch.update(goalRef, {
+      'current_amount': newCurrent,
+      'status': newStatus,
+    });
+
+    // decrement user's amount_in_account
+    batch.update(userRef, {
+      'amount_in_account': FieldValue.increment(-amountToAdd),
+    });
+
+    await batch.commit();
+
+    // update local state
+    setState(() {
+      final index = _goals.indexWhere((g) => g['id'] == goalId);
+      if (index != -1) {
+        _goals[index]['currentAmount'] = newCurrent;
+        _goals[index]['status'] = newStatus == 'reached' ? GoalStatus.reached : GoalStatus.active;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('₹${amountToAdd.toStringAsFixed(0)} added to "${goal['name']}"')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeGoals = _goals.where((g) => g['status'] == GoalStatus.active).toList();
@@ -383,9 +552,27 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
             bottom: false,
             child: TabBarView(
               children: [
-                _GoalList(goals: activeGoals, status: GoalStatus.active, onUpdateStatus: _updateGoalStatus, onDeleteGoal: _deleteGoal),
-                _GoalList(goals: pausedGoals, status: GoalStatus.paused, onUpdateStatus: _updateGoalStatus, onDeleteGoal: _deleteGoal),
-                _GoalList(goals: reachedGoals, status: GoalStatus.reached, onUpdateStatus: _updateGoalStatus, onDeleteGoal: _deleteGoal),
+                _GoalList(
+                  goals: activeGoals,
+                  status: GoalStatus.active,
+                  onUpdateStatus: _updateGoalStatus,
+                  onDeleteGoal: _deleteGoal,
+                  onAddSavings: _showAddSavingsDialog,
+                ),
+                _GoalList(
+                  goals: pausedGoals,
+                  status: GoalStatus.paused,
+                  onUpdateStatus: _updateGoalStatus,
+                  onDeleteGoal: _deleteGoal,
+                  onAddSavings: _showAddSavingsDialog,
+                ),
+                _GoalList(
+                  goals: reachedGoals,
+                  status: GoalStatus.reached,
+                  onUpdateStatus: _updateGoalStatus,
+                  onDeleteGoal: _deleteGoal,
+                  onAddSavings: _showAddSavingsDialog,
+                ),
               ],
             ),
           ),
@@ -401,12 +588,14 @@ class _GoalList extends StatelessWidget {
   final GoalStatus status;
   final Function(Map<String, dynamic>, GoalStatus) onUpdateStatus;
   final Function(Map<String, dynamic>) onDeleteGoal;
+  final Function(Map<String, dynamic>) onAddSavings;
 
   const _GoalList({
     required this.goals,
     required this.status,
     required this.onUpdateStatus,
     required this.onDeleteGoal,
+    required this.onAddSavings,
   });
 
   @override
@@ -442,8 +631,10 @@ class _GoalList extends StatelessWidget {
       itemCount: goals.length,
       itemBuilder: (context, index) {
         final goal = goals[index];
-        final progress = (goal['currentAmount'] / goal['targetAmount']).clamp(0.0, 1.0);
-        final remaining = goal['targetAmount'] - goal['currentAmount'];
+        final target = goal['targetAmount'] as double;
+        final current = goal['currentAmount'] as double;
+        final progress = (target > 0) ? (current / target).clamp(0.0, 1.0) : 0.0;
+        final remaining = (target - current).clamp(0.0, double.infinity);
 
         return Container(
           margin: const EdgeInsets.only(bottom: 15),
@@ -464,9 +655,9 @@ class _GoalList extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: goal['color'].withOpacity(0.1),
+                    backgroundColor: (goal['color'] as Color).withOpacity(0.1),
                     radius: 18,
-                    child: Icon(goal['icon'], size: 20, color: goal['color']),
+                    child: Icon(goal['icon'] as IconData, size: 20, color: goal['color'] as Color),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -487,7 +678,7 @@ class _GoalList extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Target: ₹${NumberFormat.compactSimpleCurrency(locale: 'en_IN', decimalDigits: 0).format(goal['targetAmount'])}",
+                    "Target: ₹${NumberFormat.compactSimpleCurrency(locale: 'en_IN', decimalDigits: 0).format(target)}",
                     style: const TextStyle(fontSize: 14, color: bodyTextColor),
                   ),
                   Text(
@@ -506,14 +697,14 @@ class _GoalList extends StatelessWidget {
                 backgroundColor: Colors.grey[300],
                 color: progressFill,
                 minHeight: 10,
-                borderRadius: BorderRadius.circular(10),
+                // borderRadius is not a parameter on LinearProgressIndicator in Flutter stable.
               ),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Saved: ₹${NumberFormat.compactSimpleCurrency(locale: 'en_IN', decimalDigits: 0).format(goal['currentAmount'])}",
+                    "Saved: ₹${NumberFormat.compactSimpleCurrency(locale: 'en_IN', decimalDigits: 0).format(current)}",
                     style: const TextStyle(fontSize: 13),
                   ),
                   Text(
@@ -527,6 +718,11 @@ class _GoalList extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.add_circle_outline, color: incomeColor),
+                      label: const Text('Add Savings'),
+                      onPressed: () => onAddSavings(goal),
+                    ),
                     if (status == GoalStatus.active)
                       TextButton.icon(
                         icon: const Icon(Icons.pause, color: expenseColor),
