@@ -4,8 +4,7 @@
 <dict>
 
     <key>NSContactsUsageDescription</key>
-    <string>We need access to your contacts to find friends on the app.</string>
-
+<string>This app needs access to contacts to add people to chats.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

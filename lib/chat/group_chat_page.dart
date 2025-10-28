@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:contacts_service/contacts_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'split_bill_popup.dart'; // Import the popup
 
 class GroupChatPage extends StatefulWidget {
@@ -19,6 +21,9 @@ class GroupChatPage extends StatefulWidget {
 class _GroupChatPageState extends State<GroupChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  List<Contact> contacts = [];
+  List<Contact> filteredContacts = [];
 
   final List<Map<String, dynamic>> _messages = [
     {
@@ -47,6 +52,42 @@ class _GroupChatPageState extends State<GroupChatPage> {
     Color(0xFFFFD6E8), // light pink
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchContacts();
+  }
+
+  Future<void> _fetchContacts() async {
+    var permissionStatus = await Permission.contacts.status;
+    if (!permissionStatus.isGranted) {
+      permissionStatus = await Permission.contacts.request();
+      if (!permissionStatus.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contacts permission denied')),
+        );
+        return;
+      }
+    }
+
+    Iterable<Contact> contactsIterable =
+        await ContactsService.getContacts(withThumbnails: false);
+    setState(() {
+      contacts = contactsIterable.toList();
+      filteredContacts = contacts;
+    });
+  }
+
+  void _filterContacts(String query) {
+    query = query.toLowerCase();
+    setState(() {
+      filteredContacts = contacts.where((contact) {
+        final name = contact.displayName ?? '';
+        return name.toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
@@ -74,9 +115,29 @@ class _GroupChatPageState extends State<GroupChatPage> {
   void _openSplitBillPopup() {
     showDialog(
       context: context,
-      // If you used the new class name
-// Corrected line in lib/chat/group_chat_page.dart
-builder: (_) => SplitBillPopup(),
+      builder: (_) => SplitBillPopup(),
+    );
+  }
+
+  Widget _buildContactAvatar(Contact contact) {
+    if (contact.avatar != null && contact.avatar!.isNotEmpty) {
+      return CircleAvatar(
+        backgroundImage: MemoryImage(contact.avatar!),
+        radius: 20,
+      );
+    }
+    final names = (contact.displayName ?? '').split(' ');
+    String initials = '';
+    if (names.isNotEmpty) {
+      initials = names.map((n) => n.isEmpty ? '' : n[0]).take(2).join();
+    }
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: Colors.blueAccent,
+      child: Text(
+        initials.toUpperCase(),
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -103,14 +164,12 @@ builder: (_) => SplitBillPopup(),
               children: [
                 // App bar
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
                       InkWell(
                         onTap: () => Navigator.of(context).pop(),
-                        child:
-                            const Icon(Icons.arrow_back, color: Colors.black),
+                        child: const Icon(Icons.arrow_back, color: Colors.black),
                       ),
                       const SizedBox(width: 10),
                       CircleAvatar(
@@ -130,8 +189,7 @@ builder: (_) => SplitBillPopup(),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.receipt_long_outlined,
-                            color: Colors.black),
+                        icon: const Icon(Icons.receipt_long_outlined, color: Colors.black),
                         onPressed: _openSplitBillPopup,
                         tooltip: 'Split Bill',
                       ),
@@ -162,8 +220,7 @@ builder: (_) => SplitBillPopup(),
                         // Messages list
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: ListView.builder(
                               controller: _scrollController,
                               physics: const BouncingScrollPhysics(),
@@ -172,11 +229,9 @@ builder: (_) => SplitBillPopup(),
                                 if (index == 0) {
                                   return Center(
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
                                       child: Text(
-                                        DateFormat('h:mm a')
-                                            .format(DateTime.now()),
+                                        DateFormat('h:mm a').format(DateTime.now()),
                                         style: TextStyle(
                                           color: Colors.grey.shade600,
                                           fontSize: 12,
@@ -189,17 +244,37 @@ builder: (_) => SplitBillPopup(),
                                 final msg = _messages[index - 1];
                                 final isMe = msg['isMe'] as bool;
                                 return _buildMessageBubble(
-                                  msg['text'] as String,
-                                  msg['time'] as DateTime,
-                                  msg['sender'] as String,
-                                  isMe,
-                                  context,
-                                );
+                                    msg['text'] as String,
+                                    msg['time'] as DateTime,
+                                    msg['sender'] as String,
+                                    isMe,
+                                    context);
                               },
                             ),
                           ),
                         ),
+
+                        // Message input
                         _buildMessageInput(),
+
+                        // Optional: Display group members (synced contacts) below input or elsewhere if needed
+                        // Example: show first 3 contact avatars in a row
+                        /*
+                        if (contacts.isNotEmpty)
+                          SizedBox(
+                            height: 60,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: contacts.length > 10 ? 10 : contacts.length,
+                              itemBuilder: (_, i) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: _buildContactAvatar(contacts[i]),
+                                );
+                              },
+                            ),
+                          ),
+                        */
                       ],
                     ),
                   ),
@@ -212,8 +287,8 @@ builder: (_) => SplitBillPopup(),
     );
   }
 
-  Widget _buildMessageBubble(String text, DateTime time, String sender,
-      bool isMe, BuildContext context) {
+  Widget _buildMessageBubble(
+      String text, DateTime time, String sender, bool isMe, BuildContext context) {
     final List<Color> bubbleGradient = isMe
         ? [
             const Color(0xFFDFF8FF),
@@ -238,8 +313,7 @@ builder: (_) => SplitBillPopup(),
       alignment: alignment,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: bubbleGradient,
@@ -294,7 +368,7 @@ builder: (_) => SplitBillPopup(),
           bottomLeft: Radius.circular(25),
           bottomRight: Radius.circular(25),
         ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 8,
@@ -337,8 +411,8 @@ builder: (_) => SplitBillPopup(),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+            decoration: const BoxDecoration(
+              color: Colors.grey,
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.mic_none, size: 20),
