@@ -1,0 +1,50 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace "com.example.dbms_pro"
+    compileSdk 36 // Compile SDK is correct
+
+    compileOptions {
+        // REMOVED: sourceCompatibility and targetCompatibility (will use Kotlin JVM Toolchain instead)
+        coreLibraryDesugaringEnabled true
+    }
+
+    // ADDED: Use Kotlin JVM Toolchain to enforce JVM 17 for both Java and Kotlin
+    kotlin {
+        jvmToolchain(17) 
+    }
+
+    defaultConfig {
+        applicationId "com.example.dbms_pro"
+        minSdkVersion flutter.minSdkVersion
+        targetSdk 36 // Target SDK is correct
+        versionCode 1
+        versionName "1.0"
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source "../.."
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24"
+
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+}

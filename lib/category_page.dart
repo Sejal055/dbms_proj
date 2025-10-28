@@ -281,13 +281,19 @@ class _CategoriesPageState extends State<CategoriesPage> {
         if (snapshot.hasData) {
           for (var doc in snapshot.data!.docs) {
             final data = doc.data() as Map<String, dynamic>;
+            // Use an IconData instance from the fixedIcons list (which are constant)
+            // to avoid creating a new (non-constant) IconData at runtime.
+            final int storedCodePoint =
+                data['icon_code_point'] ?? Icons.category.codePoint;
+            final IconData icon = fixedIcons.firstWhere(
+              (ic) => ic.codePoint == storedCodePoint,
+              orElse: () => Icons.category,
+            );
+
             categories.add({
               'id': doc.id,
               'name': data['name'] ?? '',
-              'icon': IconData(
-                data['icon_code_point'] ?? Icons.category.codePoint,
-                fontFamily: 'MaterialIcons',
-              ),
+              'icon': icon,
               'color': Color(data['color'] ?? 0xFFE0E0E0),
             });
           }

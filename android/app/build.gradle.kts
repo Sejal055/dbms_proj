@@ -92,5 +92,7 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
+

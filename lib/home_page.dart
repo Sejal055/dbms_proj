@@ -82,8 +82,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // _loadUserData();
-    // _loadTotals();
+    _loadUserData();
+    _loadTotals();
     _loadNotifications();
     _loadRssNews();
     RecurringPaymentChecker.checkAndMoveRecurringPayments();
@@ -114,6 +114,30 @@ class _HomePageState extends State<HomePage> {
         .snapshots();
   }
 
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (mounted) {
+          setState(() {
+            userName = data?['name'] ?? 'User';
+            monthlyBudget = (data?['monthly_budget'] is num)
+                ? (data?['monthly_budget'] as num).toDouble()
+                : 0.0;
+            initialAccountBalance = (data?['amount_in_account'] is num)
+                ? (data?['amount_in_account'] as num).toDouble()
+                : 0.0;
+          });
+        }
+      }
+    }
+  }
+
   Future<void> _loadRssNews() async {
     try {
       final articles = await RssNewsService.fetchNews();
@@ -141,6 +165,41 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       notifications = snapshot.docs.map((doc) => doc.data()).toList();
     });
+  }
+
+  Future<void> _loadTotals() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('expenses')
+        .get();
+
+    double income = 0;
+    double expense = 0;
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final amount = (data['expense_amount'] is num)
+          ? (data['expense_amount'] as num).toDouble()
+          : 0.0;
+      final type = data['expense_type'] ?? '';
+
+      if (type == 'Income') {
+        income += amount;
+      } else if (type == 'Expense') {
+        expense += amount;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        totalIncome = income;
+        totalExpense = expense;
+      });
+    }
   }
 
   // Header Section
