@@ -36,6 +36,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.7
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
@@ -47,3 +48,21 @@ flutter_launcher_icons:
   # adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/icon.png
+
+flutter_native_splash:
+  # The color to be used for the background of the splash screen.
+  color: "#D0E3FF" # Use a white background (or your app's primary color)
+
+  # The image to be displayed in the center of the splash screen.
+  image: assets/icon/icon.png 
+
+  # Configuration for Android 12+ (Adaptive Icon style)
+  android_12:
+    image: assets/icon/icon.png
+    icon_background_color: "#D0E3FF"
+
+  android: true
+  ios: true 
+  web: true # Set to true if you need a web splash screen
