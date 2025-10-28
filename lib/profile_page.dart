@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'auth/login_page.dart';
+import 'package:intl/intl.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,8 +23,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _accountBalanceController = TextEditingController();
-  final TextEditingController _monthlyBudgetController = TextEditingController();
+  final TextEditingController _accountBalanceController =
+      TextEditingController();
+  final TextEditingController _monthlyBudgetController =
+      TextEditingController();
 
   File? _profileImage;
 
@@ -36,7 +39,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {
@@ -57,10 +63,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-      });
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+        },
+      );
       setState(() {
         userName = _nameController.text.trim();
         userEmail = _emailController.text.trim();
@@ -75,18 +83,48 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _saveBudget() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      double? newAccountBalance = double.tryParse(_accountBalanceController.text.trim());
-      double? newMonthlyBudget = double.tryParse(_monthlyBudgetController.text.trim());
+      double? newAccountBalance = double.tryParse(
+        _accountBalanceController.text.trim(),
+      );
+      double? newMonthlyBudget = double.tryParse(
+        _monthlyBudgetController.text.trim(),
+      );
       if (newAccountBalance == null || newMonthlyBudget == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please enter valid numbers.")),
         );
         return;
       }
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'amount_in_account': newAccountBalance,
-        'monthly_budget': newMonthlyBudget,
-      });
+
+      // --- ⬇️ START: THE FIX ⬇️ ---
+
+      // 1. Update the main document (Your existing code)
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {
+          'amount_in_account': newAccountBalance,
+          'monthly_budget': newMonthlyBudget,
+        },
+      );
+
+      // 2. Also update the *current month's* budget subcollection
+      //    so the BudgetPage stays in sync.
+      final now = DateTime.now();
+      final currentMonthKey = DateFormat('yyyy-MM').format(now);
+
+      // We use .set with merge:true to create or update the document
+      // This updates 'total_budget' *without* deleting the 'category_budgets' map
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('budgets')
+          .doc(currentMonthKey)
+          .set({
+            'total_budget': newMonthlyBudget,
+            'timestamp': FieldValue.serverTimestamp(), // Update timestamp
+          }, SetOptions(merge: true));
+
+      // --- ⬆️ END: THE FIX ⬆️ ---
+
       setState(() {
         accountBalance = newAccountBalance;
         monthlyBudget = newMonthlyBudget;
@@ -104,11 +142,17 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) => AlertDialog(
         title: const Text("Delete Account"),
         content: const Text(
-            "Are you sure you want to permanently delete your account? This action cannot be undone."
-            ),
+          "Are you sure you want to permanently delete your account? This action cannot be undone.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete"),
+          ),
         ],
       ),
     );
@@ -123,7 +167,10 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .delete();
         await user.delete();
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,11 +190,16 @@ class _ProfilePageState extends State<ProfilePage> {
         String? password = await _showPasswordDialog();
         if (password != null && password.isNotEmpty) {
           try {
-            AuthCredential credential =
-                EmailAuthProvider.credential(email: email, password: password);
+            AuthCredential credential = EmailAuthProvider.credential(
+              email: email,
+              password: password,
+            );
 
             await user.reauthenticateWithCredential(credential);
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .delete();
             await user.delete();
 
             ScaffoldMessenger.of(context).showSnackBar(
@@ -165,12 +217,14 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         }
       } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: ${e.message}")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.message}")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
     }
   }
 
@@ -186,8 +240,14 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: const InputDecoration(hintText: "Password"),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Confirm")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text("Confirm"),
+          ),
         ],
       ),
     );
@@ -211,64 +271,71 @@ class _ProfilePageState extends State<ProfilePage> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(builder: (context, setState) {
-        return AlertDialog(
-          title: const Text("Rate BudgetBuddy"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    icon: Icon(
-                      index < rating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 32,
-                    ),
-                    onPressed: () {
-                      setState(() => rating = index + 1.0);
-                    },
-                  );
-                }),
-              ),
-              TextField(
-                controller: feedbackController,
-                decoration: const InputDecoration(
-                  hintText: "Write your feedback (optional)",
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text("Rate BudgetBuddy"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    return IconButton(
+                      icon: Icon(
+                        index < rating ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 32,
+                      ),
+                      onPressed: () {
+                        setState(() => rating = index + 1.0);
+                      },
+                    );
+                  }),
                 ),
-                maxLines: 3,
+                TextField(
+                  controller: feedbackController,
+                  decoration: const InputDecoration(
+                    hintText: "Write your feedback (optional)",
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  if (rating == 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please select a rating.")),
+                    );
+                    return;
+                  }
+                  final user = FirebaseAuth.instance.currentUser;
+                  await FirebaseFirestore.instance
+                      .collection('app_feedback')
+                      .add({
+                        'user_id': user?.uid,
+                        'email': user?.email,
+                        'rating': rating,
+                        'feedback': feedbackController.text,
+                        'timestamp': FieldValue.serverTimestamp(),
+                      });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Thanks for your feedback!")),
+                  );
+                },
+                child: const Text("Submit"),
               ),
             ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            TextButton(
-              onPressed: () async {
-                if (rating == 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please select a rating.")),
-                  );
-                  return;
-                }
-                final user = FirebaseAuth.instance.currentUser;
-                await FirebaseFirestore.instance.collection('app_feedback').add({
-                  'user_id': user?.uid,
-                  'email': user?.email,
-                  'rating': rating,
-                  'feedback': feedbackController.text,
-                  'timestamp': FieldValue.serverTimestamp(),
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Thanks for your feedback!")),
-                );
-              },
-              child: const Text("Submit"),
-            ),
-          ],
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 
@@ -287,7 +354,10 @@ class _ProfilePageState extends State<ProfilePage> {
           maxLines: 5,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           TextButton(
             onPressed: () async {
               final user = FirebaseAuth.instance.currentUser;
@@ -297,12 +367,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
                 return;
               }
-              await FirebaseFirestore.instance.collection('support_messages').add({
-                'user_id': user?.uid,
-                'email': user?.email,
-                'message': messageController.text.trim(),
-                'timestamp': FieldValue.serverTimestamp(),
-              });
+              await FirebaseFirestore.instance
+                  .collection('support_messages')
+                  .add({
+                    'user_id': user?.uid,
+                    'email': user?.email,
+                    'message': messageController.text.trim(),
+                    'timestamp': FieldValue.serverTimestamp(),
+                  });
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Your message has been sent!")),
@@ -321,7 +393,10 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         centerTitle: true,
-        title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          "Profile",
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         elevation: 1,
       ),
@@ -344,7 +419,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -352,10 +430,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: _pickImage,
                       child: CircleAvatar(
                         radius: 40,
-                        backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                        backgroundImage: _profileImage != null
+                            ? FileImage(_profileImage!)
+                            : null,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         child: _profileImage == null
-                            ? const Icon(Icons.camera_alt, color: Colors.white, size: 35)
+                            ? const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 35,
+                              )
                             : null,
                       ),
                     ),
@@ -364,9 +448,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(userName, style: Theme.of(context).textTheme.titleLarge),
+                          Text(
+                            userName,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
                           const SizedBox(height: 4),
-                          Text(userEmail, style: Theme.of(context).textTheme.bodyMedium),
+                          Text(
+                            userEmail,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ],
                       ),
                     ),
@@ -378,13 +468,18 @@ class _ProfilePageState extends State<ProfilePage> {
               // Financial Overview
               Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Financial Overview", style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        "Financial Overview",
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const Divider(),
                       _buildEditableField(
                         icon: Icons.account_balance_wallet_outlined,
@@ -407,7 +502,9 @@ class _ProfilePageState extends State<ProfilePage> {
               // Feedback & Support
               Card(
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Column(
                   children: [
                     ListTile(
@@ -423,10 +520,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const Divider(),
                     ListTile(
-                      leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                      leading: const Icon(
+                        Icons.delete_forever,
+                        color: Colors.redAccent,
+                      ),
                       title: const Text(
                         "Delete Account",
-                        style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       onTap: _confirmDeleteAccount,
                     ),
@@ -448,7 +551,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   icon: const Icon(Icons.logout, color: Colors.redAccent),
                   label: const Text(
                     "Log out",
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.redAccent),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.redAccent,
+                    ),
                   ),
                 ),
               ),

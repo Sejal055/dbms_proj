@@ -21,7 +21,8 @@ class BudgetPage extends StatefulWidget {
   State<BudgetPage> createState() => _BudgetPageState();
 }
 
-class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateMixin {
+class _BudgetPageState extends State<BudgetPage>
+    with SingleTickerProviderStateMixin {
   DateTime selectedMonth = DateTime.now();
   double totalMonthlyBudget = 0;
   Map<String, double> categoryBudgets = {};
@@ -79,8 +80,9 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
     if (doc.exists) {
       final data = doc.data()!;
       final catBudgets = Map<String, double>.from(
-        (data['category_budgets'] ?? {})
-            .map((k, v) => MapEntry(k, (v as num).toDouble())),
+        (data['category_budgets'] ?? {}).map(
+          (k, v) => MapEntry(k, (v as num).toDouble()),
+        ),
       );
 
       setState(() {
@@ -130,33 +132,53 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
   double get sumOfCategoryBudgets =>
       categoryBudgets.values.fold(0, (a, b) => a + b);
 
-  double get othersBudget =>
-      totalMonthlyBudget - sumOfCategoryBudgets >= 0
-          ? totalMonthlyBudget - sumOfCategoryBudgets
-          : 0;
+  double get othersBudget => totalMonthlyBudget - sumOfCategoryBudgets >= 0
+      ? totalMonthlyBudget - sumOfCategoryBudgets
+      : 0;
 
-  // --- Budget Action Functions ---
   Future<void> _saveBudget() async {
     final key = DateFormat('yyyy-MM').format(selectedMonth);
     Map<String, double> finalCategoryBudgets = Map.from(categoryBudgets);
     finalCategoryBudgets['Others'] = othersBudget;
 
+    // 1. Saves to the historical subcollection (Your existing code)
     await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .collection('budgets')
         .doc(key)
         .set({
-      'total_budget': totalMonthlyBudget,
-      'category_budgets': finalCategoryBudgets,
-      'timestamp': DateTime.now(),
-    });
+          'total_budget': totalMonthlyBudget,
+          'category_budgets': finalCategoryBudgets,
+          'timestamp': DateTime.now(),
+        });
+
+    // --- ⬇️ START: THE FIX ⬇️ ---
+    // 2. Also update the main user document (for the profile page)
+    //    We only do this if the budget being saved is for the *current* month.
+
+    final now = DateTime.now();
+    final currentMonthKey = DateFormat('yyyy-MM').format(now);
+
+    // Check if the month being saved (key) is the current month (currentMonthKey)
+    if (key == currentMonthKey) {
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        // This is the field name your ProfilePage reads
+        'monthly_budget': totalMonthlyBudget,
+      });
+    }
+    // --- ⬆️ END: THE FIX ⬆️ ---
 
     if (mounted) {
       Navigator.pop(context);
       _fetchBudgetHistory();
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Budget for ${DateFormat.yMMMM().format(selectedMonth)} saved successfully!')));
+        SnackBar(
+          content: Text(
+            'Budget for ${DateFormat.yMMMM().format(selectedMonth)} saved successfully!',
+          ),
+        ),
+      );
     }
   }
 
@@ -207,7 +229,9 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.9),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(25),
+                  ),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -239,7 +263,10 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                           setModalState(() {});
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             color: primaryColor.withOpacity(0.4),
@@ -247,9 +274,17 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(DateFormat.yMMMM().format(selectedMonth),
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                              const Icon(Icons.calendar_today, color: expenseColor),
+                              Text(
+                                DateFormat.yMMMM().format(selectedMonth),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.calendar_today,
+                                color: expenseColor,
+                              ),
                             ],
                           ),
                         ),
@@ -257,7 +292,9 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                       const SizedBox(height: 20),
                       TextFormField(
                         keyboardType: TextInputType.number,
-                        initialValue: totalMonthlyBudget == 0 ? '' : totalMonthlyBudget.toStringAsFixed(0),
+                        initialValue: totalMonthlyBudget == 0
+                            ? ''
+                            : totalMonthlyBudget.toStringAsFixed(0),
                         decoration: InputDecoration(
                           labelText: 'Total Monthly Budget',
                           prefixText: '₹ ',
@@ -287,18 +324,26 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                                     child: TextFormField(
                                       keyboardType: TextInputType.number,
                                       inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly
+                                        FilteringTextInputFormatter.digitsOnly,
                                       ],
                                       decoration: const InputDecoration(
                                         border: OutlineInputBorder(),
                                         prefixText: '₹ ',
                                         isDense: true,
-                                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 8,
+                                        ),
                                       ),
-                                      initialValue: categoryBudgets[categoryName] == 0 ? '' : categoryBudgets[categoryName]?.toStringAsFixed(0),
+                                      initialValue:
+                                          categoryBudgets[categoryName] == 0
+                                          ? ''
+                                          : categoryBudgets[categoryName]
+                                                ?.toStringAsFixed(0),
                                       onChanged: (val) {
                                         setState(() {
-                                          categoryBudgets[categoryName] = double.tryParse(val) ?? 0;
+                                          categoryBudgets[categoryName] =
+                                              double.tryParse(val) ?? 0;
                                         });
                                         setModalState(() {});
                                       },
@@ -314,9 +359,10 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                       Text(
                         'Others/Remaining Budget: ₹${othersBudget.toStringAsFixed(0)}',
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: othersBudget > 0 ? incomeColor : expenseColor),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: othersBudget > 0 ? incomeColor : expenseColor,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       SizedBox(
@@ -332,10 +378,14 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                           onPressed: _saveBudget,
                           child: Text(
                             "Save Budget",
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -372,7 +422,12 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
               children: [
                 // Header with Back Button
                 Padding(
-                  padding: const EdgeInsets.only(top: 10.0, left: 20, right: 20, bottom: 0),
+                  padding: const EdgeInsets.only(
+                    top: 10.0,
+                    left: 20,
+                    right: 20,
+                    bottom: 0,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -380,15 +435,19 @@ class _BudgetPageState extends State<BudgetPage> with SingleTickerProviderStateM
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
-                            child: const Icon(Icons.arrow_back, color: headerTextColor),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: headerTextColor,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           const Text(
                             'Budget',
                             style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: headerTextColor),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: headerTextColor,
+                            ),
                           ),
                         ],
                       ),
@@ -475,7 +534,11 @@ class _PeriodicOverview extends StatelessWidget {
         children: [
           Text(
             'Budget for ${DateFormat.yMMMM().format(DateTime.now())}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: headerTextColor),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: headerTextColor,
+            ),
           ),
           const SizedBox(height: 15),
           Container(
@@ -484,17 +547,36 @@ class _PeriodicOverview extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.8),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Total Monthly Budget", style: const TextStyle(fontSize: 16, color: bodyTextColor)),
-                Text("₹${totalMonthlyBudget.toStringAsFixed(0)}",
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: expenseColor)),
+                Text(
+                  "Total Monthly Budget",
+                  style: const TextStyle(fontSize: 16, color: bodyTextColor),
+                ),
+                Text(
+                  "₹${totalMonthlyBudget.toStringAsFixed(0)}",
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: expenseColor,
+                  ),
+                ),
                 const SizedBox(height: 10),
-                Text("Unallocated (Others/Remaining): ₹${othersBudget.toStringAsFixed(0)}",
-                    style: TextStyle(fontSize: 15, color: othersBudget >= 0 ? incomeColor : expenseColor)),
+                Text(
+                  "Unallocated (Others/Remaining): ₹${othersBudget.toStringAsFixed(0)}",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: othersBudget >= 0 ? incomeColor : expenseColor,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
@@ -506,7 +588,10 @@ class _PeriodicOverview extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.edit, size: 18, color: Colors.white),
-                    label: const Text("Edit Budget", style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      "Edit Budget",
+                      style: TextStyle(color: Colors.white),
+                    ),
                     onPressed: onEdit,
                   ),
                 ),
@@ -514,12 +599,21 @@ class _PeriodicOverview extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 30),
-          Text('Category Breakdown',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: headerTextColor)),
+          Text(
+            'Category Breakdown',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: headerTextColor,
+            ),
+          ),
           const SizedBox(height: 15),
           if (totalMonthlyBudget == 0)
             const Center(
-              child: Text("Tap '+' to create your first budget!", style: TextStyle(fontSize: 16, color: bodyTextColor)),
+              child: Text(
+                "Tap '+' to create your first budget!",
+                style: TextStyle(fontSize: 16, color: bodyTextColor),
+              ),
             )
           else
             ...budgetItems.where((item) => item['amount'] > 0).map((item) {
@@ -532,20 +626,37 @@ class _PeriodicOverview extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text('₹${amount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ]),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        Text(
+                          '₹${amount.toStringAsFixed(0)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
                       value: percent / 100,
                       backgroundColor: Colors.grey[300],
-                      color: name == 'Others/Remaining' ? incomeColor : expenseColor,
+                      color: name == 'Others/Remaining'
+                          ? incomeColor
+                          : expenseColor,
                       minHeight: 8,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     const SizedBox(height: 2),
-                    Text('${percent.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 12, color: bodyTextColor)),
+                    Text(
+                      '${percent.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: bodyTextColor,
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -570,7 +681,10 @@ class _OneTimeHistory extends StatelessWidget {
               children: [
                 const Icon(Icons.history, size: 60, color: bodyTextColor),
                 const SizedBox(height: 10),
-                const Text("No past budget history found.", style: TextStyle(fontSize: 16, color: bodyTextColor)),
+                const Text(
+                  "No past budget history found.",
+                  style: TextStyle(fontSize: 16, color: bodyTextColor),
+                ),
               ],
             ),
           )
@@ -585,17 +699,30 @@ class _OneTimeHistory extends StatelessWidget {
               return Card(
                 elevation: 4,
                 margin: const EdgeInsets.only(bottom: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(15),
                   leading: CircleAvatar(
                     backgroundColor: primaryColor,
                     child: Icon(Icons.calendar_month, color: expenseColor),
                   ),
-                  title: Text(monthYear, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  subtitle: Text('Total Budget: ₹${(budget['total_budget'] as double).toStringAsFixed(0)}',
-                      style: const TextStyle(color: bodyTextColor)),
-                  trailing: const Icon(Icons.chevron_right, color: expenseColor),
+                  title: Text(
+                    monthYear,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Total Budget: ₹${(budget['total_budget'] as double).toStringAsFixed(0)}',
+                    style: const TextStyle(color: bodyTextColor),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    color: expenseColor,
+                  ),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Viewing budget for $monthYear')),
