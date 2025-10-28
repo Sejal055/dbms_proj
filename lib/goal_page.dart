@@ -132,12 +132,32 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
 
     final goals = snapshot.docs.map((doc) {
       final data = doc.data();
+
+      // Resolve icon to one of the predefined constant IconData values (avoid runtime IconData constructor).
+      IconData iconData = Icons.stars;
+      final storedIcon = data['icon'];
+      if (storedIcon is int) {
+        final idx = predefinedGoals.indexWhere((g) => (g['icon'] as IconData).codePoint == storedIcon);
+        if (idx != -1) {
+          iconData = predefinedGoals[idx]['icon'] as IconData;
+        }
+      } else if (storedIcon is String) {
+        // handle legacy storage where icon might be saved as stringified int
+        final parsed = int.tryParse(storedIcon);
+        if (parsed != null) {
+          final idx = predefinedGoals.indexWhere((g) => (g['icon'] as IconData).codePoint == parsed);
+          if (idx != -1) {
+            iconData = predefinedGoals[idx]['icon'] as IconData;
+          }
+        }
+      }
+
       return {
         'id': doc.id,
         'name': data['name'],
         'targetAmount': (data['target_amount'] ?? 0).toDouble(),
         'currentAmount': (data['current_amount'] ?? 0).toDouble(),
-        'icon': data['icon'] != null ? IconData(data['icon'], fontFamily: 'MaterialIcons') : Icons.stars,
+        'icon': iconData,
         'color': data['color'] != null
             ? // stored previously as string like '429083123' (Color.value.toString())
             Color(int.tryParse(data['color']) ?? expenseColor.value)
