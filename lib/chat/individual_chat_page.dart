@@ -1,7 +1,8 @@
-// lib/individual_chat_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:dbms_pro/add_expense_page.dart'; // <-- Make sure this path matches your project
+import 'package:contacts_service/contacts_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:dbms_pro/add_expense_page.dart'; // make sure this path is correct
 
 class IndividualChatPage extends StatefulWidget {
   final String name;
@@ -20,6 +21,9 @@ class IndividualChatPage extends StatefulWidget {
 class _IndividualChatPageState extends State<IndividualChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  List<Contact> contacts = [];
+  List<Contact> filteredContacts = [];
 
   final List<Map<String, dynamic>> _messages = [
     {
@@ -46,10 +50,38 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
   // Gradient colors (light blue -> purple -> pink)
   final List<Color> _gradientColors = const [
-    Color(0xFFBEE6FF), // very light blue
-    Color(0xFFD6B8FF), // light purple
-    Color(0xFFFFD6E8), // light pink
+    Color(0xFFBEE6FF),
+    Color(0xFFD6B8FF),
+    Color(0xFFFFD6E8),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchContacts();
+  }
+
+  Future<void> _fetchContacts() async {
+    var permissionStatus = await Permission.contacts.status;
+    if (!permissionStatus.isGranted) {
+      permissionStatus = await Permission.contacts.request();
+      if (!permissionStatus.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Contacts permission denied')),
+          );
+        }
+        return;
+      }
+    }
+
+    Iterable<Contact> contactsIterable =
+        await ContactsService.getContacts(withThumbnails: false);
+    setState(() {
+      contacts = contactsIterable.toList();
+      filteredContacts = contacts;
+    });
+  }
 
   void _sendMessage() {
     final text = _controller.text.trim();
@@ -64,7 +96,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     });
 
     _controller.clear();
-    // small delay to wait for setState/layout then scroll
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -78,7 +109,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   }
 
   Future<void> _openAddExpensePopup() async {
-    // Show your AddExpensePopup dialog. It manages saving/notifications itself.
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -86,7 +116,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         onCancel: () => Navigator.of(context).pop(),
       ),
     );
-    // After closing the dialog, optionally show a small confirmation message in chat
     setState(() {
       _messages.add({
         'text': 'Expense entry added for ${widget.name}.',
@@ -99,8 +128,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   }
 
   Future<void> _openSendReminderDialog() async {
-    final TextEditingController reminderController = TextEditingController(
-        text: 'Reminder: Please pay back / check this.');
+    final TextEditingController reminderController =
+        TextEditingController(text: 'Reminder: Please pay back / check this.');
     await showDialog(
       context: context,
       builder: (context) {
@@ -115,9 +144,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // cancel
-              },
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
@@ -147,182 +174,16 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Page background: subtle light background that resembles the screenshot's pale map.
-    // You can replace this with an asset image if you prefer.
-    return Scaffold(
-      // Use a soft background color for the whole page
-      backgroundColor: Colors.grey.shade50,
-      body: Stack(
-        children: [
-          // Header gradient area (top)
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _gradientColors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-
-          // Safe area content
-          SafeArea(
-            child: Column(
-              children: [
-                // App bar
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: () => Navigator.of(context).pop(),
-                        child:
-                            const Icon(Icons.arrow_back, color: Colors.black),
-                      ),
-                      const SizedBox(width: 10),
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundImage: NetworkImage(widget.imageUrl),
-                        backgroundColor: Colors.grey.shade200,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          widget.name,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                      // ---------- REPLACED ICONS ----------
-                      // Reminder icon
-                      InkWell(
-                        onTap: _openSendReminderDialog,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Icon(
-                            Icons.notifications_active_outlined,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-
-                      // Add Expense / Income icon
-                      InkWell(
-                        onTap: _openAddExpensePopup,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Icon(
-                            Icons.attach_money,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      // ------------------------------------
-                    ],
-                  ),
-                ),
-
-                // Chat container with rounded top corners
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(25),
-                        topRight: Radius.circular(25),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                          offset: Offset(0, -5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Messages list
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: _messages.length + 1,
-                              itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  // Optional centered timestamp or intro space
-                                  return Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
-                                      child: Text(
-                                        DateFormat('h:mm a')
-                                            .format(DateTime.now()),
-                                        style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12),
-                                      ),
-                                    ),
-                                  );
-                                }
-                                final msg = _messages[index - 1];
-                                final isMe = msg['isMe'] as bool;
-                                return _buildMessageBubble(
-                                  msg['text'] as String,
-                                  msg['time'] as DateTime,
-                                  isMe,
-                                  context,
-                                  meta: msg,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-
-                        // Input
-                        _buildMessageInput(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(String text, DateTime time, bool isMe,
-      BuildContext context, {Map<String, dynamic>? meta}) {
-    // choose slightly different gradients for sent vs received so they are distinct but still in family
+  Widget _buildMessageBubble(
+      String text, DateTime time, bool isMe, BuildContext context,
+      {Map<String, dynamic>? meta}) {
     final List<Color> bubbleGradient = isMe
         ? [
-            // sent: lighter blue -> purple -> pink
             const Color(0xFFDFF8FF),
             const Color(0xFFEBDCFF),
             const Color(0xFFFFEAF2),
           ]
         : [
-            // received: slightly warmer/paler
             const Color(0xFFF3FBFF),
             const Color(0xFFF8EEFF),
             const Color(0xFFFFF0F6),
@@ -336,9 +197,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
     );
 
-    // If it's a reminder or meta message, change border color slightly
-    final bool isReminder = meta != null && (meta['isReminder'] == true);
-    final bool isMeta = meta != null && (meta['isMeta'] == true);
+    final bool isReminder = meta?['isReminder'] == true;
+    final bool isMeta = meta?['isMeta'] == true;
 
     return Align(
       alignment: alignment,
@@ -355,7 +215,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           border: Border.all(
             color: isReminder
                 ? Colors.orange.shade700
-                : (isMeta ? Colors.green.shade700 : Colors.black),
+                : (isMeta ? Colors.green.shade700 : Colors.black26),
             width: isReminder || isMeta ? 1.2 : 0.8,
           ),
           borderRadius: borderRadius,
@@ -364,7 +224,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Message text
             Text(
               text,
               style: TextStyle(
@@ -374,7 +233,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
               ),
             ),
             const SizedBox(height: 6),
-            // Time aligned to bottom-right of the bubble
             Text(
               DateFormat('h:mm a').format(time),
               style: TextStyle(
@@ -393,11 +251,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 8,
@@ -407,22 +261,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       ),
       child: Row(
         children: [
-          // plus icon (attachments)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black12),
-            ),
-            child: IconButton(
-              onPressed: () {
-                // placeholder for attachments
-              },
-              icon: const Icon(Icons.add, color: Colors.black54),
-            ),
+          IconButton(
+            onPressed: _openAddExpensePopup,
+            icon: const Icon(Icons.add_circle_outline, color: Colors.black54),
           ),
-          const SizedBox(width: 10),
-          // input text
           Expanded(
             child: TextField(
               controller: _controller,
@@ -441,18 +283,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          // mic button (placeholder)
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.mic_none, size: 20),
+          IconButton(
+            onPressed: _openSendReminderDialog,
+            icon: const Icon(Icons.alarm, color: Colors.orange),
           ),
-          const SizedBox(width: 8),
-          // send button
           GestureDetector(
             onTap: _sendMessage,
             child: Container(
@@ -469,6 +303,58 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ✅ Missing build() method added here
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundImage: NetworkImage(widget.imageUrl),
+            ),
+            const SizedBox(width: 10),
+            Text(widget.name),
+          ],
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 1,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: _gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  final msg = _messages[index];
+                  return _buildMessageBubble(
+                    msg['text'],
+                    msg['time'],
+                    msg['isMe'],
+                    context,
+                    meta: msg,
+                  );
+                },
+              ),
+            ),
+            _buildMessageInput(),
+          ],
+        ),
       ),
     );
   }

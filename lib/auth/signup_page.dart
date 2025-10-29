@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../welcome_details.dart'; // Update path as needed
-import 'login_page.dart'; // Import your login page here
+import 'login_page.dart';        // Import your login page
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});

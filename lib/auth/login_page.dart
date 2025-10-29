@@ -3,15 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_page.dart'; // Import your sign up page
 import '../home_page.dart'; // Import for home navigation if needed
 
-
 class LogInPage extends StatefulWidget {
   const LogInPage({super.key});
-
 
   @override
   _LogInPageState createState() => _LogInPageState();
 }
-
 
 class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMixin {
   final _auth = FirebaseAuth.instance;
@@ -19,15 +16,11 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _rememberMe = false;
-
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-
 
   @override
   void initState() {
@@ -41,20 +34,16 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
     _animationController.forward();
   }
 
-
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
-
     setState(() => _isLoading = true);
-
 
     try {
       await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -95,7 +84,6 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
     }
   }
 
-
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
@@ -127,7 +115,6 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
     );
   }
 
-
   @override
   void dispose() {
     _animationController.dispose();
@@ -135,7 +122,6 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
     _passwordController.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -217,15 +203,6 @@ class _LogInPageState extends State<LogInPage> with SingleTickerProviderStateMix
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Transform.scale(
-                            scale: 0.9,
-                            child: Checkbox(
-                              value: _rememberMe,
-                              onChanged: (value) => setState(() => _rememberMe = value!),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text('Remember me'),
                           const Spacer(),
                           TextButton(
                             onPressed: () {
