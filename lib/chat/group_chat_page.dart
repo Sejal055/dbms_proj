@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_contacts/flutter_contacts.dart'; // New dependency
+// Removed: import 'package:contacts_service/contacts_service.dart';
+// Removed: import 'package:permission_handler/permission_handler.dart';
+
 import 'split_bill_popup.dart'; // Import the popup
 
 class GroupChatPage extends StatefulWidget {
@@ -22,6 +24,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  // Updated type to Contact from flutter_contacts
   List<Contact> contacts = [];
   List<Contact> filteredContacts = [];
 
@@ -58,31 +61,45 @@ class _GroupChatPageState extends State<GroupChatPage> {
     _fetchContacts();
   }
 
+  // --- UPDATED CONTACT FETCHING LOGIC ---
   Future<void> _fetchContacts() async {
-    var permissionStatus = await Permission.contacts.status;
-    if (!permissionStatus.isGranted) {
-      permissionStatus = await Permission.contacts.request();
-      if (!permissionStatus.isGranted) {
+    // Request permission using flutter_contacts
+    if (!await FlutterContacts.requestPermission()) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Contacts permission denied')),
         );
-        return;
       }
+      return;
     }
 
-    Iterable<Contact> contactsIterable =
-        await ContactsService.getContacts(withThumbnails: false);
-    setState(() {
-      contacts = contactsIterable.toList();
-      filteredContacts = contacts;
-    });
+    // Load contacts, requesting necessary properties
+    try {
+      List<Contact> allContacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: true,
+      );
+
+      if (mounted) {
+        setState(() {
+          contacts = allContacts;
+          filteredContacts = contacts;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading contacts: $e')),
+        );
+      }
+    }
   }
 
   void _filterContacts(String query) {
     query = query.toLowerCase();
     setState(() {
       filteredContacts = contacts.where((contact) {
-        final name = contact.displayName ?? '';
+        final name = contact.displayName; // displayName is non-null
         return name.toLowerCase().contains(query);
       }).toList();
     });
@@ -119,14 +136,18 @@ class _GroupChatPageState extends State<GroupChatPage> {
     );
   }
 
+  // --- UPDATED AVATAR WIDGET ---
   Widget _buildContactAvatar(Contact contact) {
-    if (contact.avatar != null && contact.avatar!.isNotEmpty) {
+    // flutter_contacts uses 'photo' instead of 'avatar'
+    if (contact.photo != null) {
       return CircleAvatar(
-        backgroundImage: MemoryImage(contact.avatar!),
+        backgroundImage: MemoryImage(contact.photo!),
         radius: 20,
       );
     }
-    final names = (contact.displayName ?? '').split(' ');
+    
+    // Fallback to initials
+    final names = contact.displayName.split(' ');
     String initials = '';
     if (names.isNotEmpty) {
       initials = names.map((n) => n.isEmpty ? '' : n[0]).take(2).join();
@@ -231,7 +252,10 @@ class _GroupChatPageState extends State<GroupChatPage> {
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(vertical: 8),
                                       child: Text(
-                                        DateFormat('h:mm a').format(DateTime.now()),
+                                        // Display time of the latest message or current time
+                                        _messages.isNotEmpty 
+                                          ? DateFormat('h:mm a').format(_messages.last['time'])
+                                          : DateFormat('h:mm a').format(DateTime.now()),
                                         style: TextStyle(
                                           color: Colors.grey.shade600,
                                           fontSize: 12,
@@ -256,25 +280,6 @@ class _GroupChatPageState extends State<GroupChatPage> {
 
                         // Message input
                         _buildMessageInput(),
-
-                        // Optional: Display group members (synced contacts) below input or elsewhere if needed
-                        // Example: show first 3 contact avatars in a row
-                        /*
-                        if (contacts.isNotEmpty)
-                          SizedBox(
-                            height: 60,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: contacts.length > 10 ? 10 : contacts.length,
-                              itemBuilder: (_, i) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                                  child: _buildContactAvatar(contacts[i]),
-                                );
-                              },
-                            ),
-                          ),
-                        */
                       ],
                     ),
                   ),

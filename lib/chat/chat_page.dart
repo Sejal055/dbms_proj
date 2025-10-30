@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_contacts/flutter_contacts.dart'; // New dependency
 
 import 'individual_chat_page.dart';
 import 'group_chat_page.dart';
@@ -31,6 +30,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   String _searchQuery = '';
   bool _showMenu = false;
 
+  // Updated type to Contact from flutter_contacts
   List<Contact> contacts = [];
   List<Contact> filteredContacts = [];
 
@@ -72,23 +72,41 @@ class _ChatListScreenState extends State<ChatListScreen> {
     _fetchContacts();
   }
 
+  // --- UPDATED CONTACT FETCHING LOGIC ---
   Future<void> _fetchContacts() async {
-    var permissionStatus = await Permission.contacts.status;
-    if (!permissionStatus.isGranted) {
-      permissionStatus = await Permission.contacts.request();
-      if (!permissionStatus.isGranted) {
+    // Request permission using flutter_contacts, no need for permission_handler
+    if (!await FlutterContacts.requestPermission()) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Contacts permission denied')),
         );
-        return;
       }
+      return;
     }
 
-    Iterable<Contact> contactsIterable = await ContactsService.getContacts(withThumbnails: false);
-    setState(() {
-      contacts = contactsIterable.toList();
-      filteredContacts = contacts;
-    });
+    // Load contacts, requesting only necessary properties (display name and photo)
+    try {
+      List<Contact> allContacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: true,
+      );
+
+      // Sort contacts alphabetically
+      allContacts.sort((a, b) => a.displayName.compareTo(b.displayName));
+
+      if (mounted) {
+        setState(() {
+          contacts = allContacts;
+          filteredContacts = contacts;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading contacts: $e')),
+        );
+      }
+    }
   }
 
   void _filterContacts(String query) {
@@ -96,20 +114,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() {
       _searchQuery = query;
       filteredContacts = contacts.where((contact) {
-        final name = contact.displayName ?? '';
+        final name = contact.displayName; // displayName is non-null with getContacts
         return name.toLowerCase().contains(query);
       }).toList();
     });
   }
 
+  // --- UPDATED AVATAR WIDGET ---
   Widget _buildContactAvatar(Contact contact) {
-    if (contact.avatar != null && contact.avatar!.isNotEmpty) {
+    // flutter_contacts uses 'photo' instead of 'avatar'
+    if (contact.photo != null) {
       return CircleAvatar(
-        backgroundImage: MemoryImage(contact.avatar!),
+        backgroundImage: MemoryImage(contact.photo!),
         radius: 28,
       );
     }
-    final names = (contact.displayName ?? '').split(' ');
+    
+    // Fallback to initials
+    final names = contact.displayName.split(' ');
     String initials = '';
     if (names.isNotEmpty) {
       initials = names.map((n) => n.isEmpty ? '' : n[0]).take(2).join();
@@ -215,8 +237,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
             leading: _buildContactAvatar(contact),
-            title: Text(contact.displayName ?? 'Unknown'),
-            subtitle: const Text('Tap to chat'), // customize as needed
+            title: Text(contact.displayName), // displayName is non-null
+            subtitle: (contact.phones.isNotEmpty) 
+                ? Text(contact.phones.first.number) 
+                : const Text('Tap to chat'), // show phone number if available
             trailing: ElevatedButton.icon(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -236,7 +260,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => IndividualChatPage(
-                    name: contact.displayName ?? 'Unknown',
+                    name: contact.displayName,
                     imageUrl: '',
                   ),
                 ),
@@ -297,9 +321,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
               onSelected: (value) {
                 setState(() {
                   if (value == 'Mark Paid') {
-                    filtered[index] = filtered[index].copyWith(youOwe: false);
+                    // Update state correctly
+                    final updatedSettlement = filtered[index].copyWith(youOwe: false);
+                    final originalIndex = dummyOverallData.indexOf(filtered[index]);
+                    if (originalIndex != -1) {
+                      dummyOverallData[originalIndex] = updatedSettlement;
+                      // Re-filter the list to update the UI
+                      _filterData<Settlement>(dummyOverallData);
+                    }
                   } else if (value == 'Delete') {
                     dummyOverallData.remove(filtered[index]);
+                    // Re-filter the list to update the UI
+                    _filterData<Settlement>(dummyOverallData);
                   }
                 });
               },
@@ -379,7 +412,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Widget _menuItem(IconData icon, String title) {
     return InkWell(
-      onTap: () => print("$title clicked"),
+      onTap: () {
+        // Toggle menu off when item is clicked
+        setState(() => _showMenu = false); 
+        print("$title clicked");
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -439,6 +476,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundColor: const Color.fromARGB(25, 214, 168, 255),
       body: Stack(
         children: [
+          // Background gradient
           Container(
             height: 180,
             decoration: BoxDecoration(

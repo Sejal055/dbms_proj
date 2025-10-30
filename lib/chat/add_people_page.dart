@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_contacts/flutter_contacts.dart'; // Replaced contacts_service
 
 // --- COLORS (from chat_list_screen.dart) ---
 const Color primaryColor = Color(0xFF7BAFFC);
@@ -19,10 +18,12 @@ class AddPeoplePage extends StatefulWidget {
 class _AddPeoplePageState extends State<AddPeoplePage> {
   final TextEditingController _searchController = TextEditingController();
 
+  // Updated type to Contact from flutter_contacts
   List<Contact> contacts = [];
   List<Contact> filteredContacts = [];
 
   String searchQuery = "";
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -30,26 +31,48 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
     _fetchContacts();
   }
 
+  // --- UPDATED CONTACT FETCHING LOGIC ---
   Future<void> _fetchContacts() async {
-    // Request permission
-    var permissionStatus = await Permission.contacts.status;
-    if (!permissionStatus.isGranted) {
-      permissionStatus = await Permission.contacts.request();
-      if (!permissionStatus.isGranted) {
-        // Permission denied, handle gracefully
+    if (!await FlutterContacts.requestPermission()) {
+      // Permission denied, handle gracefully
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contacts permission denied')),
+          const SnackBar(content: Text('Contacts permission denied. Please grant access in settings.')),
         );
-        return;
+        setState(() {
+          _isLoading = false;
+        });
       }
+      return;
     }
 
-    // Load contacts
-    Iterable<Contact> contactsIterable = await ContactsService.getContacts(withThumbnails: false);
-    setState(() {
-      contacts = contactsIterable.toList();
-      filteredContacts = contacts;
-    });
+    // Load all contacts, only fetching displayName and photo (avatar) for efficiency.
+    try {
+      List<Contact> allContacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: true,
+      );
+
+      // Sort contacts alphabetically by display name
+      allContacts.sort((a, b) => (a.displayName).compareTo(b.displayName));
+
+      if (mounted) {
+        setState(() {
+          contacts = allContacts;
+          filteredContacts = allContacts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading contacts: $e')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _filterContacts(String query) {
@@ -57,23 +80,26 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
     setState(() {
       searchQuery = query;
       filteredContacts = contacts.where((contact) {
-        final name = contact.displayName ?? "";
+        final name = contact.displayName;
         return name.toLowerCase().contains(query);
       }).toList();
     });
   }
 
+  // --- UPDATED AVATAR WIDGET ---
   Widget _buildContactAvatar(Contact contact) {
-    if (contact.avatar != null && contact.avatar!.isNotEmpty) {
+    // flutter_contacts uses 'photo' instead of 'avatar' and returns a Uint8List.
+    if (contact.photo != null) {
       return CircleAvatar(
-        backgroundImage: MemoryImage(contact.avatar!),
+        backgroundImage: MemoryImage(contact.photo!),
         radius: 26,
       );
     } else {
-      // If no avatar, show initials
+      // If no photo, show initials
       String initials = "";
-      final names = (contact.displayName ?? "").split(" ");
+      final names = (contact.displayName).split(" ");
       if (names.isNotEmpty) {
+        // Take the first character of the first two names
         initials = names.map((n) => n.isEmpty ? "" : n[0]).take(2).join();
       }
       return CircleAvatar(
@@ -130,12 +156,12 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
             decoration: BoxDecoration(
               color: accentColor,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Color.fromARGB(38, 158, 158, 158),
                   spreadRadius: 1,
                   blurRadius: 6,
-                  offset: const Offset(0, 3),
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -153,60 +179,75 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
 
           // List
           Expanded(
-            child: filteredContacts.isEmpty
-                ? Center(child: Text(searchQuery.isEmpty ? "No contacts found." : "No match for \"$searchQuery\""))
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    itemCount: filteredContacts.length,
-                    itemBuilder: (context, index) {
-                      final contact = filteredContacts[index];
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color.fromARGB(31, 158, 158, 158),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          leading: _buildContactAvatar(contact),
-                          title: Text(
-                            contact.displayName ?? "",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              color: textPrimaryColor,
-                            ),
-                          ),
-                          trailing: ElevatedButton.icon(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("${contact.displayName} added to group!"),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: primaryColor))
+                : filteredContacts.isEmpty
+                    ? Center(child: Text(searchQuery.isEmpty ? "No contacts found." : "No match for \"$searchQuery\"", style: const TextStyle(color: textSecondaryColor)))
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        itemCount: filteredContacts.length,
+                        itemBuilder: (context, index) {
+                          final contact = filteredContacts[index];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color.fromARGB(31, 158, 158, 158),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.person_add, size: 18),
-                            label: const Text("Add"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                              ],
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              leading: _buildContactAvatar(contact),
+                              title: Text(
+                                contact.displayName, // displayName is non-null with flutter_contacts
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: textPrimaryColor,
+                                ),
+                              ),
+                              // Display the first phone number if available
+                              subtitle: (contact.phones.isNotEmpty) 
+                                  ? Text(
+                                      contact.phones.first.number,
+                                      style: const TextStyle(color: textSecondaryColor),
+                                    )
+                                  : null,
+                              trailing: ElevatedButton.icon(
+                                onPressed: () {
+                                  // Example action: use the phone number or ID of the contact
+                                  String detail = contact.phones.isNotEmpty 
+                                      ? contact.phones.first.number
+                                      : contact.id;
+                                  
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text("Added ${contact.displayName} ($detail) to group!"),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.person_add, size: 18),
+                                label: const Text("Add"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

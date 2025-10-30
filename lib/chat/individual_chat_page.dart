@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_contacts/flutter_contacts.dart'; // New dependency
+// Removed: import 'package:contacts_service/contacts_service.dart';
+// Removed: import 'package:permission_handler/permission_handler.dart';
 import 'package:dbms_pro/add_expense_page.dart'; // make sure this path is correct
 
 class IndividualChatPage extends StatefulWidget {
@@ -22,6 +23,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  // Updated type to Contact from flutter_contacts
   List<Contact> contacts = [];
   List<Contact> filteredContacts = [];
 
@@ -61,26 +63,38 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     _fetchContacts();
   }
 
+  // --- UPDATED CONTACT FETCHING LOGIC ---
   Future<void> _fetchContacts() async {
-    var permissionStatus = await Permission.contacts.status;
-    if (!permissionStatus.isGranted) {
-      permissionStatus = await Permission.contacts.request();
-      if (!permissionStatus.isGranted) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Contacts permission denied')),
-          );
-        }
-        return;
+    // Request permission using flutter_contacts
+    if (!await FlutterContacts.requestPermission()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contacts permission denied')),
+        );
       }
+      return;
     }
 
-    Iterable<Contact> contactsIterable =
-        await ContactsService.getContacts(withThumbnails: false);
-    setState(() {
-      contacts = contactsIterable.toList();
-      filteredContacts = contacts;
-    });
+    // Load contacts, requesting only display name and photo (photo is null for most)
+    try {
+      List<Contact> allContacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: false, // Don't need photos for this page, but keeping the structure
+      );
+
+      if (mounted) {
+        setState(() {
+          contacts = allContacts;
+          filteredContacts = contacts;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading contacts: $e')),
+        );
+      }
+    }
   }
 
   void _sendMessage() {
@@ -109,6 +123,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   }
 
   Future<void> _openAddExpensePopup() async {
+    // Note: Assuming AddExpensePopup is defined elsewhere and takes 'onCancel'
+    // and that 'dbms_pro/add_expense_page.dart' is the correct path.
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -116,15 +132,17 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         onCancel: () => Navigator.of(context).pop(),
       ),
     );
-    setState(() {
-      _messages.add({
-        'text': 'Expense entry added for ${widget.name}.',
-        'isMe': true,
-        'time': DateTime.now(),
-        'isMeta': true,
+    if (mounted) {
+      setState(() {
+        _messages.add({
+          'text': 'Expense entry added for ${widget.name}.',
+          'isMe': true,
+          'time': DateTime.now(),
+          'isMeta': true,
+        });
       });
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
   }
 
   Future<void> _openSendReminderDialog() async {
@@ -307,7 +325,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  // ✅ Missing build() method added here
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -343,9 +360,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
                   return _buildMessageBubble(
-                    msg['text'],
-                    msg['time'],
-                    msg['isMe'],
+                    msg['text'] as String,
+                    msg['time'] as DateTime,
+                    msg['isMe'] as bool,
                     context,
                     meta: msg,
                   );
