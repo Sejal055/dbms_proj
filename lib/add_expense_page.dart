@@ -388,7 +388,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                 isLoadingCategories
                     ? const CircularProgressIndicator()
                     : DropdownButtonFormField<String>(
-                        value: selectedCategory,
+                        initialValue: selectedCategory,
                         items: allCategories
                             .map(
                               (cat) => DropdownMenuItem(
@@ -429,7 +429,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                   if (currentTab == "Recurring") ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedFrequency,
+                      initialValue: selectedFrequency,
                       items: ['Weekly', 'Monthly', 'Yearly']
                           .map(
                             (f) => DropdownMenuItem(value: f, child: Text(f)),
