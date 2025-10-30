@@ -14,7 +14,7 @@ import 'chat/chat_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart';
 import 'ai chat bot/ai_intro_page.dart';
-import 'Quiz Game/quiz.dart';
+import 'QuizGame/quiz.dart';
 import 'models/news_article.dart';
 import 'services/rss_news_services.dart';
 import 'services/recurring_payment_checker.dart';
@@ -141,6 +141,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadRssNews() async {
     try {
       final articles = await RssNewsService.fetchNews();
+      articles.shuffle();
       if (mounted) {
         setState(() {
           _rssArticles = articles.take(5).toList();
