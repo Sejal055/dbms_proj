@@ -1,11 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:permission_handler/permission_handler.dart';
-
-import 'individual_chat_page.dart';
-import 'group_chat_page.dart';
-import 'add_people_page.dart';
 
 // --- COLORS ---
 const Color primaryColor = Color(0xFF7BAFFC);
@@ -13,36 +7,22 @@ const Color secondaryColor = Color(0xFFD6A8FF);
 const Color incomeColor = Color(0xFF5F97F2);
 const Color expenseColor = Color(0xFFB77BFF);
 const Color progressFill = Color(0xFF5F97F2);
-const Color unreadCountColor = secondaryColor;
-const Color deliveredColor = Colors.grey;
-const Color readColor = secondaryColor;
 const Color iconWhite = Colors.white;
 
-class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({super.key});
+class SettlementsScreen extends StatefulWidget {
+  const SettlementsScreen({super.key});
 
   @override
-  State<ChatListScreen> createState() => _ChatListScreenState();
+  State<SettlementsScreen> createState() => _SettlementsScreenState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> {
-  int _selectedTabIndex = 0;
+class _SettlementsScreenState extends State<SettlementsScreen> {
   bool _showSearch = false;
   String _searchQuery = '';
   bool _showMenu = false;
 
-  List<Contact> contacts = [];
-  List<Contact> filteredContacts = [];
-
-  // Dummy data for other tabs
-  final List<GroupData> dummyGroupData = [
-    GroupData(name: "Flutter Devs", members: 12),
-    GroupData(name: "Goa College", members: 25),
-    GroupData(name: "Movie Fans", members: 8),
-    GroupData(name: "Food Lovers", members: 15),
-  ];
-
-  final List<Settlement> dummyOverallData = [
+  // Settlement data
+  final List<Settlement> settlements = [
     Settlement(
       personName: 'Sarah Rollins',
       amount: 500,
@@ -66,263 +46,81 @@ class _ChatListScreenState extends State<ChatListScreen> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchContacts();
-  }
-
-  Future<void> _fetchContacts() async {
-    var permissionStatus = await Permission.contacts.status;
-    if (!permissionStatus.isGranted) {
-      permissionStatus = await Permission.contacts.request();
-      if (!permissionStatus.isGranted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contacts permission denied')),
-        );
-        return;
-      }
-    }
-
-    Iterable<Contact> contactsIterable = await ContactsService.getContacts(withThumbnails: false);
-    setState(() {
-      contacts = contactsIterable.toList();
-      filteredContacts = contacts;
-    });
-  }
-
-  void _filterContacts(String query) {
-    query = query.toLowerCase();
-    setState(() {
-      _searchQuery = query;
-      filteredContacts = contacts.where((contact) {
-        final name = contact.displayName ?? '';
-        return name.toLowerCase().contains(query);
-      }).toList();
-    });
-  }
-
-  Widget _buildContactAvatar(Contact contact) {
-    if (contact.avatar != null && contact.avatar!.isNotEmpty) {
-      return CircleAvatar(
-        backgroundImage: MemoryImage(contact.avatar!),
-        radius: 28,
-      );
-    }
-    final names = (contact.displayName ?? '').split(' ');
-    String initials = '';
-    if (names.isNotEmpty) {
-      initials = names.map((n) => n.isEmpty ? '' : n[0]).take(2).join();
-    }
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: primaryColor,
-      child: Text(
-        initials.toUpperCase(),
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildTopTabs() {
-    const tabNames = ['Chats', 'Groups', 'Overall'];
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromARGB(13, 0, 0, 0),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
-      child: Row(
-        children: List.generate(tabNames.length, (index) {
-          final isSelected = _selectedTabIndex == index;
-          return Expanded(
-            child: InkWell(
-              onTap: () {
-                setState(() => _selectedTabIndex = index);
-                // Reset search when switching tabs
-                setState(() {
-                  _searchQuery = '';
-                  if (index == 0) {
-                    filteredContacts = contacts;
-                  }
-                });
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 12),
-                  Text(
-                    tabNames[index],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? primaryColor : Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    height: 3,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: isSelected ? primaryColor : Colors.transparent,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ],
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  List<T> _filterData<T>(List<T> data) {
-    if (_searchQuery.isEmpty) return data;
-    if (T == GroupData) {
-      return data
-          .where((item) =>
-              (item as GroupData).name.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
-    } else if (T == Settlement) {
-      return data
-          .where((item) =>
-              (item as Settlement).personName.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
-    }
-    return data;
+  List<Settlement> _filterSettlements() {
+    if (_searchQuery.isEmpty) return settlements;
+    return settlements
+        .where((item) =>
+            item.personName.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
   }
 
   Widget _buildContent() {
-    if (_selectedTabIndex == 0) {
-      if (filteredContacts.isEmpty) {
-        return Center(
-            child:
-                Text(_searchQuery.isEmpty ? "No contacts found." : "No matching contacts."));
-      }
-      return ListView.builder(
-        padding: const EdgeInsets.only(top: 10, bottom: 20),
-        itemCount: filteredContacts.length,
-        itemBuilder: (context, index) {
-          final contact = filteredContacts[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
-            leading: _buildContactAvatar(contact),
-            title: Text(contact.displayName ?? 'Unknown'),
-            subtitle: const Text('Tap to chat'), // customize as needed
-            trailing: ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Chat started with ${contact.displayName}')),
-                );
-                // Implement chat start logic here
-              },
-              icon: const Icon(Icons.chat_bubble),
-              label: const Text("Chat"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-              ),
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => IndividualChatPage(
-                    name: contact.displayName ?? 'Unknown',
-                    imageUrl: '',
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    } else if (_selectedTabIndex == 1) {
-      final filtered = _filterData<GroupData>(dummyGroupData);
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        itemCount: filtered.length,
-        itemBuilder: (context, index) => Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 2,
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            leading: const Icon(Icons.group, color: primaryColor, size: 36),
-            title: _highlightText(filtered[index].name, _searchQuery),
-            subtitle: Text("${filtered[index].members} members"),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => GroupChatPage(
-                    groupName: filtered[index].name,
-                    groupImageUrl: 'https://i.pravatar.cc/150?img=5',
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    } else {
-      final filtered = _filterData<Settlement>(dummyOverallData);
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        itemCount: filtered.length,
-        itemBuilder: (context, index) => Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 2,
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            leading: CircleAvatar(
-              radius: 28,
-              backgroundColor: const Color.fromARGB(25, 123, 175, 252),
-              backgroundImage: NetworkImage(filtered[index].imageUrl),
-            ),
-            title: _highlightText(filtered[index].personName, _searchQuery),
-            subtitle: Text(filtered[index].youOwe
-                ? "You owe ₹${filtered[index].amount.toStringAsFixed(0)}"
-                : "${filtered[index].personName} owes you ₹${filtered[index].amount.toStringAsFixed(0)}"),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) {
-                setState(() {
-                  if (value == 'Mark Paid') {
-                    filtered[index] = filtered[index].copyWith(youOwe: false);
-                  } else if (value == 'Delete') {
-                    dummyOverallData.remove(filtered[index]);
-                  }
-                });
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'Mark Paid', child: Text('Mark as Paid')),
-                const PopupMenuItem(value: 'Left to Pay', child: Text('Left to Pay')),
-                const PopupMenuItem(value: 'Delete', child: Text('Delete')),
-              ],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    _formatDate(filtered[index].date),
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                  const Icon(Icons.more_vert, size: 20, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
+    final filtered = _filterSettlements();
+    
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          _searchQuery.isEmpty ? "No settlements found." : "No matching settlements.",
+          style: const TextStyle(color: Colors.grey),
         ),
       );
     }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) => Card(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          leading: CircleAvatar(
+            radius: 28,
+            backgroundColor: const Color.fromARGB(25, 123, 175, 252),
+            backgroundImage: NetworkImage(filtered[index].imageUrl),
+          ),
+          title: _highlightText(filtered[index].personName, _searchQuery),
+          subtitle: Text(
+            filtered[index].youOwe
+                ? "You owe ₹${filtered[index].amount.toStringAsFixed(0)}"
+                : "${filtered[index].personName} owes you ₹${filtered[index].amount.toStringAsFixed(0)}",
+            style: TextStyle(
+              color: filtered[index].youOwe ? Colors.red : Colors.green,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          trailing: PopupMenuButton<String>(
+            onSelected: (value) {
+              setState(() {
+                if (value == 'Mark Paid') {
+                  filtered[index] = filtered[index].copyWith(youOwe: false);
+                } else if (value == 'Delete') {
+                  settlements.remove(filtered[index]);
+                }
+              });
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'Mark Paid', child: Text('Mark as Paid')),
+              const PopupMenuItem(value: 'Left to Pay', child: Text('Left to Pay')),
+              const PopupMenuItem(value: 'Delete', child: Text('Delete')),
+            ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _formatDate(filtered[index].date),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Text _highlightText(String text, String query) {
@@ -367,7 +165,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             _menuItem(Icons.lock, "Privacy"),
-            _menuItem(Icons.chat, "Chats"),
             _menuItem(Icons.list, "List"),
             _menuItem(Icons.notifications, "Notifications"),
             _menuItem(Icons.accessibility_new, "Accessibility"),
@@ -404,7 +201,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             child: const Icon(Icons.arrow_back, color: iconWhite, size: 26),
           ),
           const Text(
-            'Chats',
+            'Settlements',
             style: TextStyle(
               color: iconWhite,
               fontSize: 22,
@@ -458,7 +255,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Search people or groups...',
+                        hintText: 'Search settlements...',
                         filled: true,
                         fillColor: Colors.white,
                         prefixIcon: const Icon(Icons.search, color: Colors.grey),
@@ -468,23 +265,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         ),
                       ),
                       onChanged: (v) {
-                        if (_selectedTabIndex == 0) {
-                          _filterContacts(v);
-                        } else {
-                          setState(() => _searchQuery = v);
-                        }
+                        setState(() => _searchQuery = v);
                       },
                     ),
                   ),
-                _buildTopTabs(),
+                const SizedBox(height: 16),
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.only(top: 8),
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      borderRadius:
-                          BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+                      borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))
+                      ],
                     ),
                     child: _buildContent(),
                   ),
@@ -502,11 +298,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddPeoplePage(),
-                  ),
+                // Add new settlement
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Add settlement feature')),
                 );
               },
               child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -519,12 +313,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
 }
 
 // MODELS
-
-class GroupData {
-  final String name;
-  final int members;
-  GroupData({required this.name, required this.members});
-}
 
 class Settlement {
   final String personName;
