@@ -4,32 +4,63 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// 🎯 FIX: Project-level property is now placed here
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+
 android {
     namespace "com.example.dbms_pro"
-    compileSdk 36 // Compile SDK is correct
+    compileSdk 36
 
     compileOptions {
-        // REMOVED: sourceCompatibility and targetCompatibility (will use Kotlin JVM Toolchain instead)
+        // 🎯 FIX: These are required, even with jvmToolchain
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
         coreLibraryDesugaringEnabled true
     }
 
-    // ADDED: Use Kotlin JVM Toolchain to enforce JVM 17 for both Java and Kotlin
-    kotlin {
-        jvmToolchain(17) 
+    // 🎯 FIX: Use the kotlinOptions block to set JVM target
+    kotlinOptions {
+        jvmTarget = '17'
     }
 
     defaultConfig {
         applicationId "com.example.dbms_pro"
-        minSdkVersion flutter.minSdkVersion
-        targetSdk 36 // Target SDK is correct
-        versionCode 1
-        versionName "1.0"
+        minSdk flutter.minSdkVersion
+        targetSdk 36
+        versionCode flutterVersionCode.toInteger() // Use values from local.properties
+        versionName flutterVersionName            // Use values from local.properties
         multiDexEnabled true
+    }
+
+    signingConfigs {
+        debug {
+            storeFile rootProject.file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.debug // Should ideally use a separate release signing config
             minifyEnabled false
             shrinkResources false
         }
@@ -44,7 +75,9 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24"
-
+    // This is often automatically added by Flutter
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24" 
+    
+    // Core Desugaring implementation
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 }

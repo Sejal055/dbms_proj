@@ -71,7 +71,8 @@ class _CategoriesPageState extends State<CategoriesPage> {
         .add({
       'name': name,
       'icon_code_point': icon.codePoint,
-      'color': color.toARGB32(),
+      // store color as integer value (Color.value)
+      'color': color.value,
     });
   }
 
@@ -97,66 +98,76 @@ class _CategoriesPageState extends State<CategoriesPage> {
 
   void _showAddCategoryDialog() {
     final TextEditingController controller = TextEditingController();
-    selectedIcon = null;
+
+    // Use a local selectedIcon inside the dialog so we can update it with StatefulBuilder
+    IconData? dialogSelectedIcon = selectedIcon;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Add New Category"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: "Enter category name",
-                border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text("Add New Category"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: "Enter category name",
+                  border: OutlineInputBorder(),
+                ),
               ),
+              const SizedBox(height: 15),
+              const Text("Choose an icon (optional):",
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: fixedIcons.map((icon) {
+                  final bool isSelected = dialogSelectedIcon == icon;
+                  return GestureDetector(
+                    onTap: () {
+                      // Update only the dialog-local selected icon (no pop/reopen)
+                      setStateDialog(() => dialogSelectedIcon = icon);
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: isSelected
+                          ? Colors.blue.shade100
+                          : Colors.grey.shade200,
+                      child: Icon(icon,
+                          color: isSelected ? Colors.blueAccent : Colors.black54),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                controller.dispose();
+                Navigator.pop(context);
+              },
+              child: const Text("Cancel"),
             ),
-            const SizedBox(height: 15),
-            const Text("Choose an icon (optional):",
-                style: TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: fixedIcons.map((icon) {
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => selectedIcon = icon);
-                    Navigator.pop(context);
-                    _showAddCategoryDialog(); // reopen dialog to reflect selected icon
-                  },
-                  child: CircleAvatar(
-                    backgroundColor: selectedIcon == icon
-                        ? Colors.blue.shade100
-                        : Colors.grey.shade200,
-                    child: Icon(icon,
-                        color: selectedIcon == icon
-                            ? Colors.blueAccent
-                            : Colors.black54),
-                  ),
-                );
-              }).toList(),
+            ElevatedButton(
+              onPressed: () async {
+                if (controller.text.trim().isNotEmpty) {
+                  // Save the dialog-selected icon (or default)
+                  final IconData iconToSave =
+                      dialogSelectedIcon ?? Icons.category;
+                  // Update the page-level selectedIcon as well (optional)
+                  setState(() => selectedIcon = dialogSelectedIcon);
+                  await _addCategory(controller.text.trim(), iconToSave);
+                  controller.dispose();
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text("Add"),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                await _addCategory(
-                    controller.text.trim(), selectedIcon ?? Icons.category);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text("Add"),
-          ),
-        ],
       ),
     );
   }

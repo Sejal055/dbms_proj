@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:developer'; // For log function
 
 // --- Theme Colors ---
 const Color primaryColor = Color(0xFFD0E3FF);
@@ -52,47 +51,35 @@ class _DebtsPageState extends State<DebtsPage> {
 
   Future<void> _loadDebts() async {
     final user = _auth.currentUser;
-    if (user == null) {
-      log('Firestore Error: User is not signed in. Cannot load debts.');
-      return;
-    }
-    
-    // --- DATABASE STRUCTURE CHECK ---
-    // Confirmed path: users/{user.email}/TAPT/{debt_id}
-    final debtCollectionPath = 'users/${user.email}/TAPT';
-    log('Attempting to load debts from: $debtCollectionPath');
+    if (user == null) return;
 
     try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(user.email)
-          .collection('TAPT')
-          .orderBy('createdAt', descending: true)
-          .get();
-
-      final loadedDebts = querySnapshot.docs.map((doc) {
-        final d = doc.data();
-        return {
-          'id': doc.id,
-          'type': d['type'] == 'lent' ? DebtType.lent : DebtType.borrowed,
-          'person': d['person'],
-          // Ensure amount is handled correctly
-          'amount': (d['amount'] as num).toDouble(), 
-          'dueDate': d['dueDate'] != null ? (d['dueDate'] as Timestamp).toDate() : null,
-          'status': d['status'] == 'active' ? DebtStatus.active : DebtStatus.closed,
-        };
-      }).toList();
-
-      setState(() => _debts = loadedDebts);
-      log('Successfully loaded ${loadedDebts.length} debts.');
-    } catch (e) {
-      log('Firestore Load Error: $e');
-      // Show error message to user (optional but helpful)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load data. Check console for error.')),
-        );
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final data = doc.data();
+      if (data != null && data['debts'] != null) {
+        setState(() {
+          _debts = List<Map<String, dynamic>>.from((data['debts'] as List).map((d) {
+            return {
+              'type': (d['type'] ?? 'lent') == 'lent' ? DebtType.lent : DebtType.borrowed,
+              'person': d['person'] ?? '',
+              'amount': (d['amount'] is num)
+                  ? (d['amount'] as num).toDouble()
+                  : double.tryParse('${d['amount']}') ?? 0.0,
+              'dueDate': d['dueDate'] != null
+                  ? (d['dueDate'] is Timestamp
+                      ? (d['dueDate'] as Timestamp).toDate()
+                      : (d['dueDate'] is DateTime ? d['dueDate'] as DateTime : null))
+                  : null,
+              'status':
+                  (d['status'] ?? 'active') == 'active' ? DebtStatus.active : DebtStatus.closed,
+            };
+          }));
+        });
+      } else {
+        setState(() => _debts = []);
       }
+    } catch (e) {
+      // print('Error loading debts: $e');
     }
   }
 
@@ -103,103 +90,59 @@ class _DebtsPageState extends State<DebtsPage> {
     _currentDebtType = DebtType.lent;
   }
 
-  Future<void> _saveDebtToFirestore(Map<String, dynamic> debt) async {
+  Future<void> _saveDebtsToFirestore() async {
     final user = _auth.currentUser;
-    if (user == null) {
-      log('Firestore Error: User is not signed in. Cannot save debt.');
-      return;
-    }
-    
-    try {
-      // --- SAVING DATA TO FIREBASE ---
-      final docRef = await _firestore
-          .collection('users')
-          .doc(user.email)
-          .collection('TAPT')
-          .add({
-        'type': debt['type'] == DebtType.lent ? 'lent' : 'borrowed',
-        'person': debt['person'],
-        // CRITICAL FIX: Ensure amount is saved as a number type
-        'amount': debt['amount'], 
-        'dueDate': debt['dueDate'],
-        'status': 'active', // New debts are always 'active'
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      log('Debt saved successfully with ID: ${docRef.id}');
-      
-    } catch (e) {
-      log('Firestore Save Error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save data. Check internet/permissions.')),
-        );
-      }
-    }
-  }
+    if (user == null) return;
 
-  Future<void> _updateDebtStatus(Map<String, dynamic> debt, DebtStatus newStatus) async {
-    final user = _auth.currentUser;
-    if (user == null || debt['id'] == null) {
-      log('Firestore Error: Cannot update debt status (User: $user, Debt ID: ${debt['id']})');
-      _loadDebts(); // Try to refresh if ID is missing
-      return;
-    }
+    final debtData = _debts.map((d) {
+      return {
+        'type': d['type'] == DebtType.lent ? 'lent' : 'borrowed',
+        'person': d['person'],
+        'amount': d['amount'],
+        'dueDate':
+            d['dueDate'] != null ? Timestamp.fromDate(d['dueDate'] as DateTime) : null,
+        'status': d['status'] == DebtStatus.active ? 'active' : 'closed',
+      };
+    }).toList();
 
-    // Optimistic UI update
-    setState(() {
-      final index = _debts.indexWhere((d) => d['id'] == debt['id']); 
-      if (index != -1) {
-        _debts[index]['status'] = newStatus;
-      }
-    });
-    
     try {
-      // Update Firestore record
       await _firestore
           .collection('users')
-          .doc(user.email)
-          .collection('TAPT')
-          .doc(debt['id'])
-          .update({'status': newStatus == DebtStatus.active ? 'active' : 'closed'});
-      log('Debt status updated to ${newStatus.name} for ID: ${debt['id']}');
-
+          .doc(user.uid)
+          .set({'debts': debtData}, SetOptions(merge: true));
     } catch (e) {
-      log('Firestore Update Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update status.')),
+          const SnackBar(content: Text('Failed to save debts. Please try again.')),
         );
-        _loadDebts(); // Revert UI changes by reloading the correct data
       }
     }
   }
 
-  void _addDebt() async {
+  void _addDebt() {
     final person = _personController.text.trim();
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
+    final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
 
     if (person.isNotEmpty && amount > 0) {
-      final newDebt = {
-        'type': _currentDebtType,
-        'person': person,
-        'amount': amount,
-        'dueDate': _selectedDueDate,
-        'status': DebtStatus.active,
-      };
+      setState(() {
+        _debts.add({
+          'type': _currentDebtType,
+          'person': person,
+          'amount': amount,
+          'dueDate': _selectedDueDate,
+          'status': DebtStatus.active,
+        });
+      });
 
-      Navigator.pop(context);
-      _resetModalFields();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Recording debt/IOU for $person...')),
-      );
-
-      await _saveDebtToFirestore(newDebt);
-      await _loadDebts(); // Reload to get the new data and Firestore ID
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Debt added for $person successfully!')),
-      );
+      _saveDebtsToFirestore().then((_) {
+        if (mounted) {
+          Navigator.pop(context);
+          _resetModalFields();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Debt added for $person')),
+          );
+        }
+      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid name and amount.')),
@@ -207,25 +150,29 @@ class _DebtsPageState extends State<DebtsPage> {
     }
   }
 
-  Future<void> _selectDueDate(BuildContext context, StateSetter setModalState) async {
+  void _updateDebtStatus(Map<String, dynamic> debt, DebtStatus newStatus) {
+    setState(() {
+      final originalIndex = _debts.indexOf(debt);
+      if (originalIndex != -1) {
+        _debts[originalIndex]['status'] = newStatus;
+      }
+    });
+    _saveDebtsToFirestore();
+  }
+
+  Future<void> _selectDueDate(
+      BuildContext context, StateSetter setModalState) async {
+    final DateTime now = DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDueDate ?? DateTime.now().add(const Duration(days: 7)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            primaryColor: appBarColor,
-            colorScheme: const ColorScheme.light(primary: appBarColor),
-            buttonTheme: const ButtonThemeData(textTheme: ButtonTextTheme.primary),
-          ),
-          child: child!,
-        );
-      },
+      initialDate: _selectedDueDate ?? now.add(const Duration(days: 7)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 5)),
     );
     if (picked != null) {
-      setModalState(() => _selectedDueDate = picked);
+      setModalState(() {
+        _selectedDueDate = picked;
+      });
     }
   }
 
@@ -235,183 +182,213 @@ class _DebtsPageState extends State<DebtsPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => SingleChildScrollView( 
-        child: StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.only(
-                      top: 20,
-                      left: 20,
-                      right: 20,
-                      bottom: 20, 
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-                    ),
-                    child: Column( 
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 50,
-                            height: 5,
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[400],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        const Text(
-                          "Record a Debt/IOU",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: headerTextColor,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _TypeButton(
-                              label: 'I Lent Money',
-                              type: DebtType.lent,
-                              currentType: _currentDebtType,
-                              color: incomeColor,
-                              onTap: (type) => setModalState(() => _currentDebtType = type),
-                            ),
-                            _TypeButton(
-                              label: 'I Borrowed Money',
-                              type: DebtType.borrowed,
-                              currentType: _currentDebtType,
-                              color: expenseColor,
-                              onTap: (type) => setModalState(() => _currentDebtType = type),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        TextFormField(
-                          controller: _amountController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                          ], 
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: _currentDebtType == DebtType.lent ? incomeColor : expenseColor,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Amount (₹)',
-                            prefixText: '₹ ',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: _currentDebtType == DebtType.lent ? incomeColor : expenseColor,
-                                width: 2,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: _currentDebtType == DebtType.lent ? incomeColor : expenseColor,
-                                width: 3,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.68,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, sheetScrollController) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: EdgeInsets.only(
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+                child: StatefulBuilder(
+                  builder: (BuildContext context, StateSetter setModalState) {
+                    return SingleChildScrollView(
+                      controller: sheetScrollController,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 50,
+                              height: 5,
+                              margin: const EdgeInsets.only(bottom: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[400],
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextFormField(
-                          controller: _personController,
-                          decoration: InputDecoration(
-                            labelText: _currentDebtType == DebtType.lent
-                                ? 'Lent to (Person/Reason)'
-                                : 'Borrowed from (Person/Reason)',
-                            prefixIcon: const Icon(Icons.person_outline, color: bodyTextColor),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ListTile(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Colors.grey, width: 1),
-                          ),
-                          leading: Icon(Icons.calendar_today,
-                              color: _currentDebtType == DebtType.lent ? incomeColor : expenseColor),
-                          title: Text(
-                            _selectedDueDate == null
-                                ? 'Select Due Date (Optional)'
-                                : 'Due Date: ${DateFormat('dd MMM yyyy').format(_selectedDueDate!)}',
+                          const Text(
+                            "Record a Debt/IOU",
                             style: TextStyle(
-                              color: _selectedDueDate == null ? bodyTextColor : headerTextColor,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: headerTextColor,
                             ),
                           ),
-                          trailing: const Icon(Icons.edit, color: bodyTextColor),
-                          onTap: () => _selectDueDate(context, setModalState),
-                        ),
-                        const SizedBox(height: 30),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.check, color: Colors.white),
-                            label: Text(
-                              _currentDebtType == DebtType.lent
-                                  ? "Record IOU (Lent)"
-                                  : "Record Debt (Borrowed)",
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _TypeButton(
+                                label: 'I Lent Money',
+                                type: DebtType.lent,
+                                currentType: _currentDebtType,
+                                color: incomeColor,
+                                onTap: (type) =>
+                                    setModalState(() => _currentDebtType = type),
+                              ),
+                              _TypeButton(
+                                label: 'I Borrowed Money',
+                                type: DebtType.borrowed,
+                                currentType: _currentDebtType,
+                                color: expenseColor,
+                                onTap: (type) =>
+                                    setModalState(() => _currentDebtType = type),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 30),
+                          TextFormField(
+                            controller: _amountController,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                            ],
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: _currentDebtType == DebtType.lent
+                                  ? incomeColor
+                                  : expenseColor,
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  _currentDebtType == DebtType.lent ? incomeColor : expenseColor,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
+                            decoration: InputDecoration(
+                              labelText: 'Amount (₹)',
+                              prefixText: '₹ ',
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: _currentDebtType == DebtType.lent
+                                        ? incomeColor
+                                        : expenseColor,
+                                    width: 2),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: _currentDebtType == DebtType.lent
+                                        ? incomeColor
+                                        : expenseColor,
+                                    width: 3),
                               ),
                             ),
-                            onPressed: _addDebt,
                           ),
-                        )
-                      ],
-                    ),
-                  ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _personController,
+                            decoration: InputDecoration(
+                              labelText: _currentDebtType == DebtType.lent
+                                  ? 'Lent to (Person/Reason)'
+                                  : 'Borrowed from (Person/Reason)',
+                              prefixIcon: const Icon(Icons.person_outline,
+                                  color: bodyTextColor),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ListTile(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side:
+                                  const BorderSide(color: Colors.grey, width: 1),
+                            ),
+                            leading: Icon(Icons.calendar_today,
+                                color: _currentDebtType == DebtType.lent
+                                    ? incomeColor
+                                    : expenseColor),
+                            title: Text(
+                              _selectedDueDate == null
+                                  ? 'Select Due Date (Optional)'
+                                  : 'Due Date: ${DateFormat('dd MMM yyyy').format(_selectedDueDate!)}',
+                              style: TextStyle(
+                                  color: _selectedDueDate == null
+                                      ? bodyTextColor
+                                      : headerTextColor),
+                            ),
+                            trailing:
+                                const Icon(Icons.edit, color: bodyTextColor),
+                            onTap: () => _selectDueDate(context, setModalState),
+                          ),
+                          const SizedBox(height: 30),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.check, color: Colors.white),
+                              label: Text(
+                                _currentDebtType == DebtType.lent
+                                    ? "Record IOU (Lent)"
+                                    : "Record Debt (Borrowed)",
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _currentDebtType == DebtType.lent
+                                    ? incomeColor
+                                    : expenseColor,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: _addDebt,
+                            ),
+                          ),
+                          SizedBox(
+                              height:
+                                  MediaQuery.of(context).viewInsets.bottom + 8),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final activeDebts = _debts.where((d) => d['status'] == DebtStatus.active).toList();
-    final closedDebts = _debts.where((d) => d['status'] == DebtStatus.closed).toList();
+    final activeDebts =
+        _debts.where((d) => d['status'] == DebtStatus.active).toList();
+    final closedDebts =
+        _debts.where((d) => d['status'] == DebtStatus.closed).toList();
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.white,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: appBarColor,
           elevation: 0,
           title: const Text('Debts',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
@@ -445,7 +422,7 @@ class _DebtsPageState extends State<DebtsPage> {
             ),
           ),
           child: SafeArea(
-            top: false,
+            top: true, // ✅ Fix: Allow top padding under AppBar
             child: TabBarView(
               children: [
                 _DebtList(
@@ -538,25 +515,23 @@ class _DebtList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (debts.isEmpty) {
       return Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                status == DebtStatus.active ? Icons.handshake : Icons.done_all,
-                size: 60,
-                color: bodyTextColor,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                status == DebtStatus.active
-                    ? "Track what you lent and borrowed here."
-                    : "Completed debts and IOUs will show up here.",
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, color: bodyTextColor),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              status == DebtStatus.active ? Icons.handshake : Icons.done_all,
+              size: 60,
+              color: bodyTextColor,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              status == DebtStatus.active
+                  ? "Track what you lent and borrowed here."
+                  : "Completed debts and IOUs will show up here.",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, color: bodyTextColor),
+            ),
+          ],
         ),
       );
     }
@@ -566,18 +541,13 @@ class _DebtList extends StatelessWidget {
       sortedDebts.sort((a, b) {
         final aDue = a['dueDate'] as DateTime?;
         final bDue = b['dueDate'] as DateTime?;
-        final now = DateTime.now();
-        final aIsOverdue = aDue != null && aDue.isBefore(now);
-        final bIsOverdue = bDue != null && bDue.isBefore(now);
-
-        if (aIsOverdue && !bIsOverdue) return -1; 
-        if (!aIsOverdue && bIsOverdue) return 1; 
-
-        if (aDue == null && bDue != null) return 1; 
-        if (bDue == null && aDue != null) return -1; 
-        if (aDue == null && bDue == null) return 0; 
-
-        return aDue!.compareTo(bDue!); 
+        final aIsOverdue = aDue != null && aDue.isBefore(DateTime.now());
+        final bIsOverdue = bDue != null && bDue.isBefore(DateTime.now());
+        if (aIsOverdue && !bIsOverdue) return -1;
+        if (!aIsOverdue && bIsOverdue) return 1;
+        if (aDue == null) return 1;
+        if (bDue == null) return -1;
+        return aDue.compareTo(bDue);
       });
     }
 
@@ -599,13 +569,15 @@ class _DebtList extends StatelessWidget {
             color: Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
-              color: isOverdue ? Colors.redAccent.withOpacity(0.5) : Colors.transparent,
+              color:
+                  isOverdue ? Colors.redAccent.withOpacity(0.5) : Colors.transparent,
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color:
-                    isOverdue ? Colors.red.withOpacity(0.2) : Colors.black26.withOpacity(0.1),
+                color: isOverdue
+                    ? Colors.red.withOpacity(0.2)
+                    : Colors.black26.withOpacity(0.1),
                 blurRadius: 8,
               ),
             ],
@@ -638,7 +610,9 @@ class _DebtList extends StatelessWidget {
               Text(
                 debt['person'],
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600, color: headerTextColor),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: headerTextColor),
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 10),
@@ -660,27 +634,24 @@ class _DebtList extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           color: isOverdue ? Colors.red : bodyTextColor,
-                          fontWeight: isOverdue ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isOverdue ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
                   ),
                   if (status == DebtStatus.active)
                     TextButton.icon(
-                      icon: Icon(Icons.check_circle, size: 20, color: amountColor),
-                      label: Text(
-                        'Mark Paid',
-                        style: TextStyle(color: amountColor, fontWeight: FontWeight.w600),
-                      ),
+                      icon:
+                          const Icon(Icons.check_circle, size: 20, color: incomeColor),
+                      label: const Text('Mark Paid'),
                       onPressed: () => onUpdateStatus(debt, DebtStatus.closed),
                     ),
                   if (status == DebtStatus.closed)
                     TextButton.icon(
-                      icon: const Icon(Icons.undo, size: 20, color: bodyTextColor),
-                      label: const Text(
-                        'Re-open',
-                        style: TextStyle(color: bodyTextColor, fontWeight: FontWeight.w600),
-                      ),
+                      icon:
+                          const Icon(Icons.undo, size: 20, color: bodyTextColor),
+                      label: const Text('Re-open'),
                       onPressed: () => onUpdateStatus(debt, DebtStatus.active),
                     ),
                 ],
