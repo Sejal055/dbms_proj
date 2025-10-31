@@ -49,14 +49,16 @@ android {
         multiDexEnabled true
     }
 
+    // --- FIX APPLIED HERE ---
     signingConfigs {
         debug {
-            storeFile rootProject.file("debug.keystore")
-            storePassword "android"
+            // **REMOVED storeFile and storePassword**
+            // **Gradle will now use the system-wide debug keystore (~/.android/debug.keystore)**
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
     }
+    // ------------------------
 
     buildTypes {
         release {

@@ -25,6 +25,7 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
   List<fc.Contact> filteredContacts = [];
 
   String searchQuery = "";
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -38,7 +39,7 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
     if (!await fc.FlutterContacts.requestPermission()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contacts permission denied')),
+          const SnackBar(content: Text('Contacts permission denied. Please grant access in settings.')),
         );
       }
       return;
@@ -73,10 +74,11 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
         radius: 26,
       );
     } else {
-      // If no avatar, show initials
+      // If no photo, show initials
       String initials = "";
       final names = (contact.displayName).split(" ");
       if (names.isNotEmpty) {
+        // Take the first character of the first two names
         initials = names.map((n) => n.isEmpty ? "" : n[0]).take(2).join();
       }
       return CircleAvatar(
@@ -134,12 +136,12 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
             decoration: BoxDecoration(
               color: accentColor,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: const Color.fromARGB(38, 158, 158, 158),
                   spreadRadius: 1,
                   blurRadius: 6,
-                  offset: const Offset(0, 3),
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
