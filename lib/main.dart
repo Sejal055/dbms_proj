@@ -1,13 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'auth/login_page.dart';        // <-- Import your login page
-import 'home_page.dart';             // <-- Import your home page
-import 'firebase_options.dart';      // (flutterfire configure)
+import 'auth/login_page.dart';
+import 'home_page.dart';        
+import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'services/notification_service.dart';
-
-// --- ADD THIS AUTH WRAPPER WIDGET ---
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthWrapper extends StatelessWidget {
@@ -24,13 +22,12 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.hasData) {
           return HomePage();
         } else {
-          return LogInPage(); // Use your login page as entry
+          return LogInPage();
         }
       },
     );
   }
 }
-// ------------------------------------
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,8 +51,7 @@ class BudgetBuddyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      // CHANGED: Use the AuthWrapper as your home widget
-      home: const AuthWrapper(), // <--- This handles auth state and navigation!
+      home: const AuthWrapper(),
     );
   }
 }
