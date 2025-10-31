@@ -10,7 +10,7 @@ import 'profile_page.dart';
 import 'history.dart';
 import 'stats_page.dart' as stats;
 import 'notification_page.dart';
-import 'chat/chat_page.dart';
+import 'chat/groups_page.dart';
 import 'category_page.dart';
 import 'category_detail_page.dart';
 import 'ai chat bot/ai_intro_page.dart';
@@ -141,7 +141,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadRssNews() async {
     try {
       final articles = await RssNewsService.fetchNews();
-      articles.shuffle();
       if (mounted) {
         setState(() {
           _rssArticles = articles.take(5).toList();
@@ -1350,23 +1349,25 @@ class _HomePageState extends State<HomePage> {
               ),
               // Chat
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ChatListScreen()),
-                  );
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.chat_rounded, color: _textSecondary, size: 24),
-                    Text(
-                      'Chat',
-                      style: TextStyle(fontSize: 10, color: _textSecondary),
-                    ),
-                  ],
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const GroupsPage()), // <-- 1. Links to GroupsPage
+              );
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.group_rounded, // <-- 2. Icon changed
+                    color: _textSecondary,
+                    size: 24),
+                Text(
+                  'Groups', // <-- 3. Text changed
+                  style: TextStyle(fontSize: 10, color: _textSecondary),
                 ),
-              ),
+              ],
+            ),
+          ),
             ],
           ),
         ),

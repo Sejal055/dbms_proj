@@ -352,7 +352,7 @@ class _BudgetPageState extends State<BudgetPage>
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -660,7 +660,7 @@ class _PeriodicOverview extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
         ],
       ),
     );

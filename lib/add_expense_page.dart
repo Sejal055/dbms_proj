@@ -3,6 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+// import 'package:contacts_service/contacts_service.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' as fc;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'services/low_budget_notification.dart';
 
 class AddExpensePopup extends StatefulWidget {
@@ -30,6 +34,14 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
   bool isIncome = false;
   bool _isSaving = false;
   bool isLoadingCategories = true;
+
+  // Contact selection
+  bool useContactForPayTo = false;
+  
+  // --- MODIFICATION 1: Specify the Contact type ---
+  // Change 'Contact' to 'flutter_contacts.Contact' to be explicit
+  fc.Contact? selectedContact;
+  String? selectedPhoneNumber;
 
   final List<String> baseCategories = [
     'Food & Dining',
@@ -89,12 +101,99 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     }
   }
 
+  // --- MODIFICATION 2: Update the contact picker method ---
+ Future<void> _pickContactForPayTo() async {
+  // Your permission_handler code is fine
+  var permissionStatus = await Permission.contacts.status;
+  if (!permissionStatus.isGranted) {
+    permissionStatus = await Permission.contacts.request();
+    if (!permissionStatus.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contacts permission denied')),
+        );
+      }
+      return;
+    }
+  }
+
+  try {
+    // --- UPDATE THIS SECTION ---
+    
+    // Add 'fc.' prefix to FlutterContacts and Contact
+    final fc.Contact? contact = await fc.FlutterContacts.openExternalPick();
+
+    if (contact != null) {
+      String? phoneNumber;
+      if (contact.phones.isNotEmpty) {
+        phoneNumber = contact.phones.first.number;
+      }
+
+      setState(() {
+        selectedContact = contact; // This is now an 'fc.Contact' type
+        selectedPhoneNumber = phoneNumber;
+        payToController.text = contact.displayName;
+        useContactForPayTo = true;
+      });
+    }
+    // --- END UPDATE ---
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting contact: $e')),
+      );
+    }
+  }
+}
+
+  String _normalizePhoneNumber(String phone) {
+    String normalized = phone.replaceAll(RegExp(r'[\s\-\(\)\+]'), '');
+    if (normalized.startsWith('0')) normalized = normalized.substring(1);
+    if (!normalized.startsWith('91')) normalized = '91$normalized';
+    return normalized;
+  }
+
+  Future<void> _openGooglePay(String? phoneNumber, double amount) async {
+    try {
+      Uri gpayUri;
+      
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        // Redirect to GPay with phone number and amount
+        final normalizedPhone = _normalizePhoneNumber(phoneNumber);
+        gpayUri = Uri.parse(
+          'upi://pay?pa=$normalizedPhone@paytm&pn=${payToController.text}&am=$amount&cu=INR',
+        );
+      } else {
+        // Redirect to GPay homepage
+        gpayUri = Uri.parse('tez://');
+      }
+
+      if (await canLaunchUrl(gpayUri)) {
+        await launchUrl(gpayUri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback to Play Store
+        final playStoreUri = Uri.parse(
+          'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',
+        );
+        if (await canLaunchUrl(playStoreUri)) {
+          await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open Google Pay: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _saveData() async {
     if (!_formKey.currentState!.validate()) return;
     if (selectedCategory == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Select a category")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Select a category")),
+      );
       return;
     }
 
@@ -108,9 +207,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
     final now = DateTime.now();
 
     try {
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
 
       if (currentTab == "Expense") {
         await userRef.collection('expenses').add({
@@ -130,6 +227,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
           'category': selectedCategory,
           'type': type,
           'pay_to': payToController.text.trim(),
+          'phone_number': selectedPhoneNumber,
+          'has_contact': useContactForPayTo,
           'status': 'pending',
           'timestamp': FieldValue.serverTimestamp(),
         });
@@ -137,9 +236,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
 
       if (currentTab == "Future") {
         if (selectedDate == null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Select a future date")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Select a future date")),
+          );
           setState(() => _isSaving = false);
           return;
         }
@@ -150,6 +249,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
           'category': selectedCategory,
           'type': type,
           'pay_to': payToController.text.trim(),
+          'phone_number': selectedPhoneNumber,
+          'has_contact': useContactForPayTo,
           'scheduled_for': selectedDate,
           'status': 'scheduled',
           'timestamp': FieldValue.serverTimestamp(),
@@ -228,10 +329,13 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
       selectedDate = null;
       selectedCategory = null;
       selectedFrequency = null;
+      selectedContact = null;
+      selectedPhoneNumber = null;
+      useContactForPayTo = false;
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed: $e")),
+      );
     } finally {
       setState(() => _isSaving = false);
     }
@@ -330,9 +434,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                         onSelected: (_) => setState(() => type = "Receive"),
                         selectedColor: Colors.green,
                         labelStyle: TextStyle(
-                          color: type == "Receive"
-                              ? Colors.white
-                              : Colors.black,
+                          color: type == "Receive" ? Colors.white : Colors.black,
                         ),
                       ),
                     ],
@@ -343,8 +445,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                 // Title
                 TextFormField(
                   controller: nameController,
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? "Enter name" : null,
+                  validator: (v) => (v == null || v.isEmpty) ? "Enter name" : null,
                   decoration: const InputDecoration(
                     labelText: "Title",
                     border: OutlineInputBorder(),
@@ -355,11 +456,8 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                 // Amount
                 TextFormField(
                   controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? "Enter amount" : null,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => (v == null || v.isEmpty) ? "Enter amount" : null,
                   decoration: const InputDecoration(
                     labelText: "Amount (₹)",
                     border: OutlineInputBorder(),
@@ -369,18 +467,67 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
 
                 // Pay To / Receive From (only for Pending or Future)
                 if (currentTab == "Pending" || currentTab == "Future") ...[
-                  TextFormField(
-                    controller: payToController,
-                    validator: (v) => (v == null || v.isEmpty)
-                        ? (type == "Pay"
-                              ? "Enter name of person to pay"
-                              : "Enter name of person to receive from")
-                        : null,
-                    decoration: InputDecoration(
-                      labelText: type == "Pay" ? "Pay to" : "Receive from",
-                      border: const OutlineInputBorder(),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: payToController,
+                          validator: (v) => (v == null || v.isEmpty)
+                              ? (type == "Pay"
+                                  ? "Enter name of person to pay"
+                                  : "Enter name of person to receive from")
+                              : null,
+                          decoration: InputDecoration(
+                            labelText: type == "Pay" ? "Pay to" : "Receive from",
+                            border: const OutlineInputBorder(),
+                            suffixIcon: selectedContact != null
+                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.contacts, color: Colors.blue),
+                        tooltip: 'Choose from contacts',
+                        onPressed: _pickContactForPayTo,
+                      ),
+                    ],
                   ),
+                  if (selectedContact != null && selectedPhoneNumber != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.phone, size: 16, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                selectedPhoneNumber!,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                            const Icon(Icons.payment, size: 16, color: Colors.blue),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'GPay Ready',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 12),
                 ],
 
@@ -388,7 +535,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                 isLoadingCategories
                     ? const CircularProgressIndicator()
                     : DropdownButtonFormField<String>(
-                        initialValue: selectedCategory,
+                        value: selectedCategory,
                         items: allCategories
                             .map(
                               (cat) => DropdownMenuItem(
@@ -402,8 +549,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                           labelText: "Category",
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) =>
-                            (v == null) ? "Select category" : null,
+                        validator: (v) => (v == null) ? "Select category" : null,
                       ),
                 const SizedBox(height: 12),
 
@@ -417,9 +563,7 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                           label: Text(
                             selectedDate == null
                                 ? "Select Date"
-                                : DateFormat(
-                                    'dd MMM yyyy',
-                                  ).format(selectedDate!),
+                                : DateFormat('dd MMM yyyy').format(selectedDate!),
                           ),
                           onPressed: _pickDate,
                         ),
@@ -429,11 +573,9 @@ class _AddExpensePopupState extends State<AddExpensePopup> {
                   if (currentTab == "Recurring") ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: selectedFrequency,
+                      value: selectedFrequency,
                       items: ['Weekly', 'Monthly', 'Yearly']
-                          .map(
-                            (f) => DropdownMenuItem(value: f, child: Text(f)),
-                          )
+                          .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                           .toList(),
                       onChanged: (v) => setState(() => selectedFrequency = v),
                       decoration: const InputDecoration(

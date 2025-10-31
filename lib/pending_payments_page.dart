@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PendingPaymentsPage extends StatefulWidget {
-  const PendingPaymentsPage({Key? key}) : super(key: key);
+  const PendingPaymentsPage({super.key});
 
   @override
   State<PendingPaymentsPage> createState() => _PendingPaymentsPageState();
@@ -65,27 +65,24 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
               final category = data['category'] ?? 'Uncategorized';
               final type = data['type'] ?? 'Pay';
               final status = data['status'] ?? 'pending';
-              final payTo =
-                  data['pay_to'] ?? ''; // New field for Pay/Receive name
+              
+              // --- MODIFICATION 1: Read all required fields ---
+              final payTo = data['pay_to'] ?? '';
+              // Safely read the phone number (it might be null)
+              final phoneNumber = data['phone_number'] as String?;
 
-              // ✅ Handle Timestamps safely
+              // Handle Timestamps safely
               DateTime? createdAt;
-              if (data['created_at'] is Timestamp) {
-                createdAt = (data['created_at'] as Timestamp).toDate();
-              } else if (data['created_at'] is String) {
-                createdAt = DateTime.tryParse(data['created_at']);
-              } else if (data['timestamp'] is Timestamp) {
+              if (data['timestamp'] is Timestamp) {
                 createdAt = (data['timestamp'] as Timestamp).toDate();
               }
 
               DateTime? scheduledFor;
               if (data['scheduled_for'] is Timestamp) {
                 scheduledFor = (data['scheduled_for'] as Timestamp).toDate();
-              } else if (data['scheduled_for'] is String) {
-                scheduledFor = DateTime.tryParse(data['scheduled_for']);
               }
 
-              // ✅ Choose best date to display
+              // Choose best date to display
               String dateText;
               Color dateColor;
               if (scheduledFor != null) {
@@ -210,8 +207,14 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
                           // Pay button (only for "Pay" type)
                           if (type == 'Pay')
                             ElevatedButton.icon(
+                              // --- MODIFICATION 2: Call the new function ---
                               onPressed: () async {
-                                await _openUpiPayment(title, amount);
+                                // Pass all the required data
+                                await _openGooglePay(
+                                  phoneNumber,
+                                  payTo,
+                                  amount,
+                                );
                               },
                               icon: const Icon(Icons.account_balance_wallet),
                               label: const Text('Pay'),
@@ -224,7 +227,7 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
                               ),
                             ),
 
-                          // ✅ Mark as Paid / Received
+                          // Mark as Paid / Received
                           ElevatedButton.icon(
                             onPressed: () async {
                               await _markAsDone(doc.id, data);
@@ -260,20 +263,54 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
     );
   }
 
-  /// 🔹 Function to open external UPI app
-  Future<void> _openUpiPayment(String title, num amount) async {
-    final upiUrl =
-        'upi://pay?pa=someone@upi&pn=$title&am=$amount&cu=INR&tn=Payment for $title';
-    final uri = Uri.parse(upiUrl);
+  // --- MODIFICATION 3: Added normalize function from AddExpensePopup ---
+  String _normalizePhoneNumber(String phone) {
+    String normalized = phone.replaceAll(RegExp(r'[\s\-\(\)\+]'), '');
+    if (normalized.startsWith('0')) normalized = normalized.substring(1);
+    if (!normalized.startsWith('91')) normalized = '91$normalized';
+    return normalized;
+  }
 
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open UPI app')));
+  // --- MODIFICATION 4: Replaced _openUpiPayment with logic from AddExpensePopup ---
+  Future<void> _openGooglePay(
+      String? phoneNumber, String payToName, double amount) async {
+    try {
+      Uri gpayUri;
+
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        // Contact was selected: Redirect to GPay with phone, name, and amount
+        final normalizedPhone = _normalizePhoneNumber(phoneNumber);
+        gpayUri = Uri.parse(
+          'upi://pay?pa=$normalizedPhone@paytm&pn=$payToName&am=$amount&cu=INR',
+        );
+      } else {
+        // Manual entry: Redirect to GPay homepage
+        gpayUri = Uri.parse('tez://');
+      }
+
+      if (await canLaunchUrl(gpayUri)) {
+        await launchUrl(gpayUri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback to Play Store
+        final playStoreUri = Uri.parse(
+          'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user',
+        );
+        if (await canLaunchUrl(playStoreUri)) {
+          await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
+        } else {
+          throw 'Could not launch GPay or Play Store.';
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open Google Pay: $e')),
+        );
+      }
     }
   }
 
-  // 🔹 Function to move payment to History
+  // 🔹 Function to move payment to History (Unchanged)
   Future<void> _markAsDone(String docId, Map<String, dynamic> data) async {
     try {
       final userRef = FirebaseFirestore.instance
@@ -282,17 +319,17 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
 
       final bool isPay = data['type'] == 'Pay';
 
-      // ✅ Save to 'history' collection in same format used by HistoryPage
+      // Save to 'history' collection
       await userRef.collection('history').add({
         'expense_name': data['title'],
         'amount': data['amount'],
         'category': data['category'],
         'expense_type': isPay ? 'Expense' : 'Income',
         'timestamp': FieldValue.serverTimestamp(),
-        'source': 'Pending', // helpful for debugging
+        'source': 'Pending',
       });
 
-      // ✅ Optionally also store in 'expenses' (if you want unified data)
+      // Optionally also store in 'expenses'
       await userRef.collection('expenses').add({
         'expense_name': data['title'],
         'amount': data['amount'],
@@ -302,7 +339,7 @@ class _PendingPaymentsPageState extends State<PendingPaymentsPage> {
         'source': 'Pending',
       });
 
-      // ✅ Delete from pending list
+      // Delete from pending list
       await userRef.collection('pending_payments').doc(docId).delete();
 
       if (mounted) {

@@ -87,7 +87,7 @@ Future<void> transferLeftoverToGoals(String userId, double leftoverAmount) async
 
 // --- Main Widget ---
 class GoalPage extends StatefulWidget {
-  const GoalPage({Key? key}) : super(key: key);
+  const GoalPage({super.key});
 
   @override
   State<GoalPage> createState() => _GoalPageState();
@@ -557,8 +557,8 @@ class _GoalPageState extends State<GoalPage> with SingleTickerProviderStateMixin
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: expenseColor,
-          child: const Icon(Icons.add, color: Colors.white),
           onPressed: _openGoalSheet,
+          child: const Icon(Icons.add, color: Colors.white),
         ),
         body: Container(
           decoration: const BoxDecoration(

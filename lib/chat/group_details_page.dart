@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-// 1. Updated to flutter_contacts and added permission_handler
+
+// 1. UPDATED: Imports
 import 'package:flutter_contacts/flutter_contacts.dart' as fc;
 import 'package:permission_handler/permission_handler.dart';
-import 'split_bill_popup.dart'; // Import the popup
 
-// 2. Renamed class from GroupChatPage to GroupDetailsPage
+// 2. ADDED: Imports for the pages this page links to
+import 'split_bill_popup.dart';
+import 'add_people_page.dart'; // Make sure this file exists in your project
+
+// 3. RENAMED: Class from GroupChatPage to GroupDetailsPage
 class GroupDetailsPage extends StatefulWidget {
   final String groupName;
   final String groupImageUrl;
@@ -20,15 +24,14 @@ class GroupDetailsPage extends StatefulWidget {
   State<GroupDetailsPage> createState() => _GroupDetailsPageState();
 }
 
-// 3. Renamed state class
 class _GroupDetailsPageState extends State<GroupDetailsPage> {
-  // 4. Removed all chat-related state variables (_controller, _scrollController, _messages)
-
-  // Contacts are still needed for the 'SplitBillPopup' to select people
+  // State variables for all contacts (for popups)
   List<fc.Contact> contacts = [];
-  List<fc.Contact> filteredContacts = [];
+  
+  // State variables for this group's members
+  List<fc.Contact> groupMembers = [];
 
-  // 5. ADDED: Hard-coded list of expenses to display in the new UI
+  // Demo data for expenses
   final List<Map<String, dynamic>> _expenses = [
     {
       'title': 'Dinner at BBQ Nation',
@@ -53,6 +56,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
     },
   ];
 
+  // UI Colors
   final List<Color> _gradientColors = const [
     Color(0xFFBEE6FF), // light blue
     Color(0xFFD6B8FF), // light purple
@@ -65,7 +69,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
     _fetchContacts();
   }
 
-  // 6. UPDATED: Switched from contacts_service to flutter_contacts
+  // 4. UPDATED: Fetches all contacts and populates a demo member list
   Future<void> _fetchContacts() async {
     // Check and request permission
     if (!await fc.FlutterContacts.requestPermission()) {
@@ -77,37 +81,59 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
       return;
     }
 
-    // Get contacts
+    // Get all contacts
     final contactsIterable =
         await fc.FlutterContacts.getContacts(withPhoto: true);
     setState(() {
       contacts = contactsIterable;
-      filteredContacts = contacts;
+      
+      // --- DEMO ---
+      // In a real app, you would fetch members from Firestore.
+      // Here, we just take the first 3 contacts as "members".
+      groupMembers = contacts.take(3).toList();
+      // --- END DEMO ---
     });
   }
 
-  // 7. UPDATED: Filter logic (mostly the same, just type-safe)
-  void _filterContacts(String query) {
-    query = query.toLowerCase();
-    setState(() {
-      filteredContacts = contacts.where((contact) {
-        return contact.displayName.toLowerCase().contains(query);
-      }).toList();
-    });
+  // 5. ADDED: This function opens the AddPeoplePage
+  Future<void> _navigateToAddPeople() async {
+    // Launch the AddPeoplePage and wait for a result
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddPeoplePage()),
+    );
+
+    // Check if the result is a contact
+    if (result != null && result is fc.Contact) {
+      final selectedContact = result;
+      
+      // Add the contact to your local list (prevent duplicates)
+      setState(() {
+        if (!groupMembers.any((c) => c.id == selectedContact.id)) {
+          groupMembers.add(selectedContact);
+        }
+      });
+      
+      // TODO: Save this new member to your Firestore group
+      // e.g., FirebaseFirestore.instance.collection('groups')
+      //          .doc(YOUR_GROUP_ID).collection('members').add(...)
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${selectedContact.displayName} was added!")),
+      );
+    }
   }
 
-  // 8. REMOVED: _sendMessage() and _scrollToBottom()
-
-  // 9. KEPT: This function is called by the "Add Expense" button
+  // 6. UPDATED: This opens the SplitBillPopup
   void _openSplitBillPopup() {
     showDialog(
       context: context,
-      // We pass the contact list to the popup
+      // Pass the *full* contact list to the popup
       builder: (_) => SplitBillPopup(contacts: contacts),
     );
   }
 
-  // 10. UPDATED: _buildContactAvatar to use fc.Contact
+  // 7. UPDATED: Uses fc.Contact
   Widget _buildContactAvatar(fc.Contact contact, {double radius = 22}) {
     final photo = contact.photo;
     if (photo != null) {
@@ -133,7 +159,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
     );
   }
 
-  // 11. ADDED: A new widget to build the expense cards
+  // 8. ADDED: New widget for expense cards
   Widget _buildExpenseCard(Map<String, dynamic> expense) {
     final String title = expense['title'];
     final double amount = expense['amount'];
@@ -146,6 +172,9 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
     final String splitDetails =
         youPaid ? 'You paid ₹$amount' : '$paidBy paid ₹$amount';
     final Color amountColor = youPaid ? Colors.green : Colors.red;
+
+    // Simplified calculation
+    final double myShare = youPaid ? amount : -(amount / people.length);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -200,7 +229,9 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
             const SizedBox(width: 10),
             // Amount
             Text(
-              youPaid ? '+₹${amount.toInt()}' : '-₹${(amount / people.length).toInt()}',
+              myShare > 0
+                  ? '+₹${myShare.toInt()}'
+                  : '-₹${myShare.abs().toInt()}',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -233,7 +264,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
           SafeArea(
             child: Column(
               children: [
-                // 12. UPDATED: App bar
+                // 9. UPDATED: App bar with "Add Expense" button
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -260,18 +291,18 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                           ),
                         ),
                       ),
-                      // This is now the "Add Expense" button
+                      // "Add Expense" button
                       IconButton(
                         icon: const Icon(Icons.receipt_long_outlined,
                             color: Colors.black),
                         onPressed: _openSplitBillPopup,
-                        tooltip: 'Add Expense', // Changed tooltip
+                        tooltip: 'Add Expense',
                       ),
                     ],
                   ),
                 ),
 
-                // 13. REPLACED: Chat section is now Members + Expenses
+                // 10. REPLACED: Chat UI with Members + Expenses list
                 Expanded(
                   child: Container(
                     width: double.infinity,
@@ -292,7 +323,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 14. ADDED: Members horizontal list
+                        // 11. ADDED: Members horizontal list
                         const Padding(
                           padding: EdgeInsets.only(
                               top: 20, left: 16, right: 16, bottom: 10),
@@ -307,21 +338,38 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
-                            // Show first 10 contacts as demo "members"
-                            itemCount:
-                                contacts.length > 10 ? 10 : contacts.length,
+                            // Add 1 to the count for the "Add" button
+                            itemCount: groupMembers.length + 1,
                             itemBuilder: (_, i) {
+                              if (i == 0) {
+                                // This is the "Add Member" button
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  child: InkWell(
+                                    onTap: _navigateToAddPeople, // <-- Links to AddPeoplePage
+                                    child: CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor: Colors.grey.shade200,
+                                      child: const Icon(Icons.add,
+                                          color: Colors.black54),
+                                    ),
+                                  ),
+                                );
+                              }
+                              // The other items are the member avatars
+                              final contact = groupMembers[i - 1];
                               return Padding(
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 4),
-                                child: _buildContactAvatar(contacts[i]),
+                                child: _buildContactAvatar(contact),
                               );
                             },
                           ),
                         ),
                         const Divider(height: 20, indent: 16, endIndent: 16),
 
-                        // 15. REPLACED: Messages list with Expenses list
+                        // 12. REPLACED: Messages list with Expenses list
                         Expanded(
                           child: ListView.builder(
                             physics: const BouncingScrollPhysics(),
@@ -347,8 +395,6 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                             },
                           ),
                         ),
-
-                        // 16. REMOVED: _buildMessageInput()
                       ],
                     ),
                   ),

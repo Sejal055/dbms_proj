@@ -652,24 +652,36 @@ class _CashFlowPageState extends State<CashFlowPage> {
 
       // monthly/yearly comparisons
       if (date.year == now.year && date.month == now.month) {
-        if (type == 'Income') incomeThisMonth += amount;
-        else expenseThisMonth += amount;
+        if (type == 'Income') {
+          incomeThisMonth += amount;
+        } else {
+          expenseThisMonth += amount;
+        }
       }
       final prevMonth = DateTime(now.year, now.month - 1 < 1 ? 12 : now.month - 1,
           1); // rough prev-month check below
       if ((date.year == now.year && date.month == now.month - 1) ||
           (now.month == 1 && date.year == now.year - 1 && date.month == 12 && now.month - 1 < 1)) {
-        if (type == 'Income') incomePrevMonth += amount;
-        else expensePrevMonth += amount;
+        if (type == 'Income') {
+          incomePrevMonth += amount;
+        } else {
+          expensePrevMonth += amount;
+        }
       }
 
       if (date.year == now.year) {
-        if (type == 'Income') incomeThisYear += amount;
-        else expenseThisYear += amount;
+        if (type == 'Income') {
+          incomeThisYear += amount;
+        } else {
+          expenseThisYear += amount;
+        }
       }
       if (date.year == now.year - 1) {
-        if (type == 'Income') incomePrevYear += amount;
-        else expensePrevYear += amount;
+        if (type == 'Income') {
+          incomePrevYear += amount;
+        } else {
+          expensePrevYear += amount;
+        }
       }
     }
 
@@ -1273,8 +1285,11 @@ class _ReportPageState extends State<ReportPage> {
       final ts = _parseTimestamp(data['timestamp']);
 
       count++;
-      if (type == 'Income') inc += amount;
-      else exp += amount;
+      if (type == 'Income') {
+        inc += amount;
+      } else {
+        exp += amount;
+      }
 
       final category = (data['category'] ?? 'Others').toString();
       if (type != 'Income') catTotals[category] = (catTotals[category] ?? 0) + amount;
