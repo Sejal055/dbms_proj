@@ -43,3 +43,37 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase config
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+
+# Android
+android/local.properties
+android/.gradle/
+
+dbms_pro/android/local.properties
+dbms_pro/ios/Flutter/ephemeral/
+dbms_pro/macos/Flutter/ephemeral/
+dbms_pro/ios/Flutter/flutter_export_environment.sh
+dbms_pro/ios/Flutter/flutter_export_environment 2.sh
+dbms_pro/macos/Flutter/flutter_export_environment.sh
+
+
+# iOS
+ios/Flutter/ephemeral/
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/flutter_export_environment 2.sh
+macos/Flutter/ephemeral/flutter_export_environment.sh
+
+# Ephemeral Flutter build files
+ios/Flutter/ephemeral/
+macos/Flutter/ephemeral/
+
+# Logs
+*.log
+firepit-log.txt
+
+# Flutter plugin auto-generated
+.flutter-plugins-dependencies*
